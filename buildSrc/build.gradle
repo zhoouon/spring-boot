@@ -1,11 +1,11 @@
 plugins {
 	id "java-gradle-plugin"
-	id "io.spring.javaformat" version "${javaFormatVersion}"
+//	id "io.spring.javaformat" version "${javaFormatVersion}"
 	id "checkstyle"
 }
 
 repositories {
-	maven { url 'https://maven.aliyun.com/nexus/content/groups/public/' }
+	maven { url 'https://maven.aliyun.com/nexus/content/groups/public' }
 	maven { url 'https://maven.aliyun.com/nexus/content/repositories/jcenter' }
 	mavenCentral()
 	gradlePluginPortal()

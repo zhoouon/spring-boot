@@ -16,29 +16,10 @@
 
 package org.springframework.boot.autoconfigure;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.Aware;
-import org.springframework.beans.factory.BeanClassLoaderAware;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.BeanFactoryAware;
-import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.beans.factory.*;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.context.annotation.ImportCandidates;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -58,6 +39,11 @@ import org.springframework.core.type.classreading.MetadataReaderFactory;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
+
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * {@link DeferredImportSelector} to handle {@link EnableAutoConfiguration
@@ -121,14 +107,23 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 		if (!isEnabled(annotationMetadata)) {
 			return EMPTY_ENTRY;
 		}
+		// 获取注解属性
 		AnnotationAttributes attributes = getAttributes(annotationMetadata);
+		// 从META-INF/spring.factories中获取候选配置
 		List<String> configurations = getCandidateConfigurations(annotationMetadata, attributes);
+		// 去除重复配置
 		configurations = removeDuplicates(configurations);
+		// 获取注解中的排除项
 		Set<String> exclusions = getExclusions(annotationMetadata, attributes);
+		// 检查排除类
 		checkExcludedClasses(configurations, exclusions);
+		// 从上面的候选配置中移除所有排除的配置类
 		configurations.removeAll(exclusions);
+		// 通过ConfigurationClassFilter筛选配置
 		configurations = getConfigurationClassFilter().filter(configurations);
+		// 触发自动配置导入事件
 		fireAutoConfigurationImportEvents(configurations, exclusions);
+		// 返回排除后的自动配置Entry
 		return new AutoConfigurationEntry(configurations, exclusions);
 	}
 

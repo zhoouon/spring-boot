@@ -136,6 +136,33 @@ import java.util.stream.Collectors;
  * @see #run(Class, String[])
  * @see #run(Class[], String[])
  * @see #SpringApplication(Class...)
+ * TODO SpringBoot启动流程
+ * 	1、调用有@SpringBootApplication注解的启动类的main方法
+ * 	2、通过调用SpringApplication内部的run()方法构建SpringApplication对象。
+ * 	创建SpringApplication对象：
+ * 		2.1 PrimarySources 不为空，将启动类赋值给primarySources 对象。
+ * 		2.2 从classpath类路径推断Web应用类型，有三种Web应用类型NONE、SERVLET、REACTIVE
+ *    	2.3 初始化bootstrapRegistryInitializers
+ *    	2.4 初始化ApplicationContextInitializer集合
+ *    	2.5 初始化ApplicationListener
+ *    	2.6 获取StackTraceElement数组遍历，通过反射获取堆栈中有main方法A的。
+ * 	3、调用SpringBootApplication的run方法。
+ * 	4、long startTime = System.nanoTime(); 记录项目启动时间。
+ * 	5、通过BootstrapRegistryInitializer来初始化DefaultBootstrapContext
+ * 	6、getRunListeners(args)获取SpringApplicationRunListeners监听器
+ * 	7、 listeners.starting()触发ApplicationStartingEvent事件
+ * 	8、prepareEnvironment(listeners, bootstrapContext, applicationArguments) 将配置文件读取到容器中，返回ConfigurableEnvironment 对象。
+ * 	9、printBanner(environment) 打印Banner图，即SpringBoot启动时的图案。
+ * 	10、根据WebApplicationType从ApplicationContextFactory工厂创建ConfigurableApplicationContext，并设置ConfigurableApplicationContext中的ApplicationStartup为DefaultApplicationStartup
+ * 	11、 调用prepareContext()初始化context等，打印启动日志信息，启动Profile日志信息，并为BeanFactory中的部分属性赋值。
+ * 	12、刷新容器，在该方法中集成了Tomcat容器
+ * 	13、加载SpringMVC.
+ * 	14、刷新后的方法，空方法，给用户自定义重写afterRefresh（）
+ * 	15、Duration timeTakenToStartup = Duration.ofNanos(System.nanoTime() - startTime)算出启动花费的时间。
+ * 	16、打印日志Started xxx in xxx seconds (JVM running for xxxx)
+ * 	17、listeners.started(context, timeTakenToStartup)触发ApplicationStartedEvent事件监听。上下文已刷新，应用程序已启动。
+ * 	18、调用ApplicationRunner和CommandLineRunner
+ * 	19、返回上下文。
  */
 public class SpringApplication {
 
@@ -216,6 +243,7 @@ public class SpringApplication {
 	 * @see #run(Class, String[])
 	 * @see #SpringApplication(ResourceLoader, Class...)
 	 * @see #setSources(Set)
+	 * 将启动类当做参数传到SpringApplication的有参构造中
 	 */
 	public SpringApplication(Class<?>... primarySources) {
 		this(null, primarySources);
@@ -243,12 +271,15 @@ public class SpringApplication {
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
 		// 推断当前web应用，一共有三种: NONE、SERVLET、REACTIVE
 		this.webApplicationType = WebApplicationType.deduceFromClasspath();
-
+		// 初始化bootstrapRegistryInitializers，通过getSpringFactoriesInstances()获取工厂实例
+		// 底层使用反射Class<?> instanceClass = ClassUtils.forName(name, classLoader)动态加载实例对象
 		this.bootstrapRegistryInitializers = new ArrayList<>(
 				getSpringFactoriesInstances(BootstrapRegistryInitializer.class));
 		// 设置应用上下文初始器，从"META-INF/spring.factories"读取ApplicationContextInitializer类的实例名称集合并去重，并进行set去重。（一共7个）
+		// 初始化ApplicationContextInitializer集合
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
 		// 设置监听器，从"META-INF/spring.factories"读取ApplicationListener类的实例名称集合并去重，并进行set去重。（一共11个）
+		// 初始化ApplicationListener
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
 		// 推断主入口应用类，通过当前调用，获取Main函数所在类，并赋值给mainApplicationClass
 		this.mainApplicationClass = deduceMainApplicationClass();
@@ -276,43 +307,59 @@ public class SpringApplication {
 	 * @return a running {@link ApplicationContext}
 	 */
 	public ConfigurableApplicationContext run(String... args) {
-		// 1.创建并启动计时监控类
+		// 1.创建并启动计时监控类，用于统计run启动过程花了多少时间
 		long startTime = System.nanoTime();
 		DefaultBootstrapContext bootstrapContext = createBootstrapContext();
-		// 定义可配置的应用上下文变量
+		// 2.定义可配置的应用上下文变量
 		ConfigurableApplicationContext context = null;
+		// 3.配置java.awt.headless属性
 		configureHeadlessProperty();
-		// 去spring.factroies中获取SpringApplicationRunListener的组件，就是用来发布事件或者运行监听器
+		// 4.去spring.factroies中获取SpringApplicationRunListener的组件，就是用来发布事件或者运行监听器  观察者模式
 		SpringApplicationRunListeners listeners = getRunListeners(args);
-		// 发布1.ApplicationStartingEvent事件，在运行开始时发送
+		// 5.发布ApplicationStartingEvent事件，在运行开始时发送
 		listeners.starting(bootstrapContext, this.mainApplicationClass);
 		try {
-			// 根据命令行参数，实例化一个ApplicationArguments对象
+			// 6.根据命令行参数，实例化一个ApplicationArguments对象，封装了args参数
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
-			// 预初始化环境，读取环境变量，读取配置文件信息(基于监听器)
+			// 7.预初始化环境，读取环境变量，读取配置文件信息(基于监听器)
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, bootstrapContext, applicationArguments);
-			// 忽略beaninfo的bean
+			// 8.配置spring.beaninfo.ignore，设置为true.即跳过搜索Bean信息
 			configureIgnoreBeanInfo(environment);
-			// 打印Banner 横幅，就是我们的启动logo
+			// 9.打印Banner 横幅，就是我们的启动logo
 			Banner printedBanner = printBanner(environment);
-			// 根据webApplicationType创建Spring上下文
-			// 主要就是内置tomcat
+			// 10.根据WebApplicationType从ApplicationContextFactory工厂创建ConfigurableApplicationContext
 			context = createApplicationContext();
+			// 11.设置ConfigurableApplicationContext中的ApplicationStartup为DefaultApplicationStartup
 			context.setApplicationStartup(this.applicationStartup);
-			// 预初始化Spring上下文
+			// 12.预初始化Spring上下文
 			prepareContext(bootstrapContext, context, environment, listeners, applicationArguments, printedBanner);
-			// 加载Spring IOC，容器相当重要，由于是使用AnnotationConfigServletWebServerApplicationContext启动spring容器，所以SpirngBoot对它做了扩展
+			// 13.刷新容器，这一步至关重要，由于是使用AnnotationConfigServletWebServerApplicationContext启动spring容器，所以SpirngBoot对它做了扩展
 			// 加载自动配置类: invokeBeanFactoryPostProcessors,创建Servlet的onRefresh
-			//
-			//
+			// 1）在context刷新前做一些准备工作，比如初始化一些属性设置，属性合法性校验和保存容器中的一些早期事件等；
+			// 2）让子类刷新其内部bean factory,注意SpringBoot和Spring启动的情况执行逻辑不一样
+			// 3）对bean factory进行配置，比如配置bean factory的类加载器，后置处理器等
+			// 4）完成bean factory的准备工作后，此时执行一些后置处理逻辑，子类通过重写这个方法来在BeanFactory创建并预准备完成以后做进一步的设置
+			// 在这一步，所有的bean definitions将会被加载，但此时bean还不会被实例化
+			// 5）执行BeanFactoryPostProcessor的方法即调用bean factory的后置处理器：
+			// BeanDefinitionRegistryPostProcessor（触发时机：bean定义注册之前）和BeanFactoryPostProcessor（触发时机：bean定义注册之后bean实例化之前）
+			// 6）注册bean的后置处理器BeanPostProcessor，注意不同接口类型的BeanPostProcessor；在Bean创建前后的执行时机是不一样的
+			// 7）初始化国际化MessageSource相关的组件，比如消息绑定，消息解析等
+			// 8）初始化事件广播器，如果bean factory没有包含事件广播器，那么new一个SimpleApplicationEventMulticaster广播器对象并注册到bean factory中
+			// 9）AbstractApplicationContext定义了一个模板方法onRefresh，留给子类覆写，比如ServletWebServerApplicationContext覆写了该方法来创建内嵌的tomcat容器
+			// 10）注册实现了ApplicationListener接口的监听器，之前已经有了事件广播器，此时就可以派发一些early application events
+			// 11）完成容器bean factory的初始化，并初始化所有剩余的单例bean。这一步非常重要，一些bean postprocessor会在这里调用。
+			// 12）完成容器的刷新工作，并且调用生命周期处理器的onRefresh()方法，并且发布ContextRefreshedEvent事件
 			refreshContext(context);
+			// 14.执行刷新容器的后置处理逻辑，注意这里为空方法
 			afterRefresh(context, applicationArguments);
+			// 启动花费的时间
 			Duration timeTakenToStartup = Duration.ofNanos(System.nanoTime() - startTime);
 			if (this.logStartupInfo) {
 				new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), timeTakenToStartup);
 			}
+			// 15.发射ApplicationStartedEvent事件，标志spring容器已经刷新，此时所有的bean实例都已经加载完毕
 			listeners.started(context, timeTakenToStartup);
-			// callRunners()方法执行所有runner运行器
+			// 16.调用ApplicationRunner和CommandLineRunner的run方法，实现spring容器启动后需要做的一些东西比如加载一些业务数据等
 			callRunners(context, applicationArguments);
 		}
 		catch (Throwable ex) {
@@ -320,13 +367,16 @@ public class SpringApplication {
 			throw new IllegalStateException(ex);
 		}
 		try {
+			// 启动准备消耗的时间
 			Duration timeTakenToReady = Duration.ofNanos(System.nanoTime() - startTime);
+			// 17.在run方法完成前立即触发ApplicationReadyEvent事件监听,表示应用上下文已刷新，并且CommandLineRunners和ApplicationRunners已被调用
 			listeners.ready(context, timeTakenToReady);
 		}
 		catch (Throwable ex) {
 			handleRunFailure(context, ex, null);
 			throw new IllegalStateException(ex);
 		}
+		// 18.最终返回容器
 		return context;
 	}
 
@@ -1305,8 +1355,10 @@ public class SpringApplication {
 	 * @param primarySource the primary source to load
 	 * @param args the application arguments (usually passed from a Java main method)
 	 * @return the running {@link ApplicationContext}
+	 * run方法是一个静态方法，用于启动SpringBoot
 	 */
 	public static ConfigurableApplicationContext run(Class<?> primarySource, String... args) {
+		// 继续调用静态的run方法
 		return run(new Class<?>[] { primarySource }, args);
 	}
 
@@ -1316,8 +1368,10 @@ public class SpringApplication {
 	 * @param primarySources the primary sources to load
 	 * @param args the application arguments (usually passed from a Java main method)
 	 * @return the running {@link ApplicationContext}
+	 * run 方法是一个静态方法，用于启动Springboot
 	 */
 	public static ConfigurableApplicationContext run(Class<?>[] primarySources, String[] args) {
+		// 构建一个SpringApplication对象，并调用其run方法启动
 		return new SpringApplication(primarySources).run(args);
 	}
 
