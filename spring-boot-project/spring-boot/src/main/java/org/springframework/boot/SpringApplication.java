@@ -282,12 +282,12 @@ public class SpringApplication {
 	 * @param primarySources the primary bean sources
 	 * @see #run(Class, String[])
 	 * @see #setSources(Set)
-	 * TODO 创建一个新的实力，这个应用的上下文将要从指定的来源加载bean
+	 * TODO 创建一个新的实例，这个应用的上下文将要从指定的来源加载bean
 	 * 		当程序开始执行之后，会调用SpringApplication的构造方法，进行某些初始化参数的设置
 	 */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public SpringApplication(ResourceLoader resourceLoader, Class<?>... primarySources) {
-		// 资源初始化资源加载器，默认为null
+		// 初始化资源加载器，默认为null
 		this.resourceLoader = resourceLoader;
 		// 断言主要加载资源类不能为null，否则报错
 		Assert.notNull(primarySources, "PrimarySources must not be null");
