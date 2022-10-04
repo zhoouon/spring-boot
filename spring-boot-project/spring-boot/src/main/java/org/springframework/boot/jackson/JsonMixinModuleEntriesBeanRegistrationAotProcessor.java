@@ -17,8 +17,14 @@
 package org.springframework.boot.jackson;
 
 import java.lang.reflect.Executable;
+import java.util.function.BiConsumer;
 
+import javax.lang.model.element.Modifier;
+
+import org.springframework.aot.generate.AccessControl;
+import org.springframework.aot.generate.GeneratedMethod;
 import org.springframework.aot.generate.GenerationContext;
+import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.beans.factory.aot.BeanRegistrationAotContribution;
 import org.springframework.beans.factory.aot.BeanRegistrationAotProcessor;
 import org.springframework.beans.factory.aot.BeanRegistrationCode;
@@ -34,25 +40,59 @@ class JsonMixinModuleEntriesBeanRegistrationAotProcessor implements BeanRegistra
 
 	@Override
 	public BeanRegistrationAotContribution processAheadOfTime(RegisteredBean registeredBean) {
-		if (registeredBean.getBeanClass().equals(JsonMixinModule.class)) {
+		if (registeredBean.getBeanClass().equals(JsonMixinModuleEntries.class)) {
 			return BeanRegistrationAotContribution
-					.withCustomCodeFragments((codeFragments) -> new AotContribution(codeFragments));
+					.withCustomCodeFragments((codeFragments) -> new AotContribution(codeFragments, registeredBean));
 		}
 		return null;
 	}
 
 	static class AotContribution extends BeanRegistrationCodeFragmentsDecorator {
 
-		public AotContribution(BeanRegistrationCodeFragments delegate) {
+		private final RegisteredBean registeredBean;
+
+		public AotContribution(BeanRegistrationCodeFragments delegate, RegisteredBean registeredBean) {
 			super(delegate);
+			this.registeredBean = registeredBean;
 		}
 
 		@Override
 		public CodeBlock generateInstanceSupplierCode(GenerationContext generationContext,
 				BeanRegistrationCode beanRegistrationCode, Executable constructorOrFactoryMethod,
 				boolean allowDirectSupplierShortcut) {
-			return super.generateInstanceSupplierCode(generationContext, beanRegistrationCode,
-					constructorOrFactoryMethod, allowDirectSupplierShortcut);
+			JsonMixinModuleEntries entries = this.registeredBean.getBeanFactory()
+					.getBean(this.registeredBean.getBeanName(), JsonMixinModuleEntries.class);
+			contributeHints(generationContext.getRuntimeHints(), entries);
+			GeneratedMethod generatedMethod = beanRegistrationCode.getMethods().add("getInstance", method -> {
+				Class<?> beanType = JsonMixinModuleEntries.class;
+				method.addJavadoc("Get the bean instance for '$L'.", this.registeredBean.getBeanName());
+				method.addModifiers(Modifier.PRIVATE, Modifier.STATIC);
+				method.returns(beanType);
+				CodeBlock.Builder code = CodeBlock.builder();
+				code.add("return $T.create()", JsonMixinModuleEntries.class).indent();
+				ClassLoader classLoader = this.registeredBean.getBeanFactory().getBeanClassLoader();
+				entries.doWithEntry(classLoader, addEntryCode(code));
+				code.unindent();
+				method.addStatement(code.build());
+			});
+			return generatedMethod.toMethodReference().toCodeBlock();
+		}
+
+		private BiConsumer<Class<?>, Class<?>> addEntryCode(CodeBlock.Builder code) {
+			return (type, mixin) -> {
+				AccessControl accessForTypes = AccessControl.lowest(AccessControl.forClass(type),
+						AccessControl.forClass(mixin));
+				if (accessForTypes.isPublic()) {
+					code.add(".and($T.class, $T.class)\n", type, mixin);
+				}
+				else {
+					code.add(".and($S, $S)\n", type.getName(), mixin.getName());
+				}
+			};
+		}
+
+		private void contributeHints(RuntimeHints runtimeHints, JsonMixinModuleEntries entries) {
+
 		}
 
 	}

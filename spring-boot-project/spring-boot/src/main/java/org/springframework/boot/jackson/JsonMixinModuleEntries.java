@@ -44,20 +44,13 @@ public final class JsonMixinModuleEntries {
 		this.entries = new LinkedHashMap<>(entries);
 	}
 
-	public void doWithEntry(ClassLoader classLoader, BiConsumer<Class<?>, Class<?>> action) {
-		this.entries.forEach((type, mixin) -> {
-			action.accept(resolveClassNameIfNecessary(type, classLoader),
-					resolveClassNameIfNecessary(mixin, classLoader));
-		});
-	}
-
-	private Class<?> resolveClassNameIfNecessary(Object type, ClassLoader classLoader) {
-		return (type instanceof Class<?> clazz) ? clazz : ClassUtils.resolveClassName((String) type, classLoader);
+	public static JsonMixinModuleEntries create() {
+		return new JsonMixinModuleEntries(Collections.emptyMap());
 	}
 
 	public static JsonMixinModuleEntries scan(ApplicationContext context, Collection<String> basePackages) {
 		if (ObjectUtils.isEmpty(basePackages)) {
-			return new JsonMixinModuleEntries(Collections.emptyMap());
+			return create();
 		}
 		JsonMixinComponentScanner scanner = new JsonMixinComponentScanner();
 		scanner.setEnvironment(context.getEnvironment());
@@ -80,6 +73,29 @@ public final class JsonMixinModuleEntries {
 		for (Class<?> targetType : annotation.getClassArray("type")) {
 			entries.put(targetType, mixinClass);
 		}
+	}
+
+	public JsonMixinModuleEntries and(String type, String mixinClass) {
+		Map<Object, Object> merged = this.entries;
+		merged.put(type, mixinClass);
+		return new JsonMixinModuleEntries(merged);
+	}
+
+	public JsonMixinModuleEntries and(Class<?> type, Class<?> mixinClass) {
+		Map<Object, Object> merged = this.entries;
+		merged.put(type, mixinClass);
+		return new JsonMixinModuleEntries(merged);
+	}
+
+	public void doWithEntry(ClassLoader classLoader, BiConsumer<Class<?>, Class<?>> action) {
+		this.entries.forEach((type, mixin) -> {
+			action.accept(resolveClassNameIfNecessary(type, classLoader),
+					resolveClassNameIfNecessary(mixin, classLoader));
+		});
+	}
+
+	private Class<?> resolveClassNameIfNecessary(Object type, ClassLoader classLoader) {
+		return (type instanceof Class<?> clazz) ? clazz : ClassUtils.resolveClassName((String) type, classLoader);
 	}
 
 	static class JsonMixinComponentScanner extends ClassPathScanningCandidateComponentProvider {
