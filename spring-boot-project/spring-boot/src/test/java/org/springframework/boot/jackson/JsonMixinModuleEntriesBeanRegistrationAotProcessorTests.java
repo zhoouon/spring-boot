@@ -72,7 +72,7 @@ class JsonMixinModuleEntriesBeanRegistrationAotProcessorTests {
 				this.generationContext);
 		this.generationContext.writeGeneratedContent();
 		TestCompiler compiler = TestCompiler.forSystem();
-		compiler.with(this.generationContext).compile((compiled) -> {
+		compiler.with(this.generationContext).printFiles(System.out).compile((compiled) -> {
 			GenericApplicationContext freshApplicationContext = new GenericApplicationContext();
 			ApplicationContextInitializer<GenericApplicationContext> initializer = compiled
 					.getInstance(ApplicationContextInitializer.class, className.toString());

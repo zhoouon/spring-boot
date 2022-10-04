@@ -17,7 +17,8 @@
 package org.springframework.boot.jackson;
 
 import java.lang.reflect.Executable;
-import java.util.function.BiConsumer;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.lang.model.element.Modifier;
 
@@ -69,26 +70,26 @@ class JsonMixinModuleEntriesBeanRegistrationAotProcessor implements BeanRegistra
 				method.addModifiers(Modifier.PRIVATE, Modifier.STATIC);
 				method.returns(beanType);
 				CodeBlock.Builder code = CodeBlock.builder();
-				code.add("return $T.create()", JsonMixinModuleEntries.class).indent();
+				code.add("return $T.create()\n", JsonMixinModuleEntries.class).indent();
+				List<CodeBlock> codeEntries = new ArrayList<>();
 				ClassLoader classLoader = this.registeredBean.getBeanFactory().getBeanClassLoader();
-				entries.doWithEntry(classLoader, addEntryCode(code));
+				entries.doWithEntry(classLoader, (type, mixin) -> codeEntries.add(addEntryCode(type, mixin)));
+				code.add(CodeBlock.join(codeEntries, "\n"));
 				code.unindent();
 				method.addStatement(code.build());
 			});
 			return generatedMethod.toMethodReference().toCodeBlock();
 		}
 
-		private BiConsumer<Class<?>, Class<?>> addEntryCode(CodeBlock.Builder code) {
-			return (type, mixin) -> {
-				AccessControl accessForTypes = AccessControl.lowest(AccessControl.forClass(type),
-						AccessControl.forClass(mixin));
-				if (accessForTypes.isPublic()) {
-					code.add(".and($T.class, $T.class)\n", type, mixin);
-				}
-				else {
-					code.add(".and($S, $S)\n", type.getName(), mixin.getName());
-				}
-			};
+		private CodeBlock addEntryCode(Class<?> type, Class<?> mixin) {
+			AccessControl accessForTypes = AccessControl.lowest(AccessControl.forClass(type),
+					AccessControl.forClass(mixin));
+			if (accessForTypes.isPublic()) {
+				return CodeBlock.of(".and($T.class, $T.class)", type, mixin);
+			}
+			else {
+				return CodeBlock.of(".and($S, $S)", type.getName(), mixin.getName());
+			}
 		}
 
 		private void contributeHints(RuntimeHints runtimeHints, JsonMixinModuleEntries entries) {
