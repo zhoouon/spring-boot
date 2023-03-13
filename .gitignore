@@ -40,3 +40,4 @@ target
 secrets.yml
 .gradletasknamecache
 .sts4-cache
+/gradle/wrapper/gradle-7.6.1-bin.zip
