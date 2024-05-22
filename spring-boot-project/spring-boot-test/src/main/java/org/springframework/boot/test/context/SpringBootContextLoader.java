@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.util.List;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.boot.ApplicationContextFactory;
+import org.springframework.boot.Banner.Mode;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
@@ -119,6 +120,9 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 			}
 			return ApplicationContextFactory.DEFAULT.create(type);
 		});
+		if (config.getParent() != null) {
+			application.setBannerMode(Mode.OFF);
+		}
 		application.setInitializers(initializers);
 		ConfigurableEnvironment environment = getEnvironment();
 		if (environment != null) {
@@ -208,7 +212,7 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 		}
 		initializers.addAll(application.getInitializers());
 		for (Class<? extends ApplicationContextInitializer<?>> initializerClass : config
-				.getContextInitializerClasses()) {
+			.getContextInitializerClasses()) {
 			initializers.add(BeanUtils.instantiateClass(initializerClass));
 		}
 		if (config.getParent() != null) {
@@ -218,8 +222,11 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 	}
 
 	private boolean isEmbeddedWebEnvironment(MergedContextConfiguration config) {
-		return MergedAnnotations.from(config.getTestClass(), SearchStrategy.TYPE_HIERARCHY).get(SpringBootTest.class)
-				.getValue("webEnvironment", WebEnvironment.class).orElse(WebEnvironment.NONE).isEmbedded();
+		return MergedAnnotations.from(config.getTestClass(), SearchStrategy.TYPE_HIERARCHY)
+			.get(SpringBootTest.class)
+			.getValue("webEnvironment", WebEnvironment.class)
+			.orElse(WebEnvironment.NONE)
+			.isEmbedded();
 	}
 
 	@Override
@@ -307,7 +314,7 @@ public class SpringBootContextLoader extends AbstractContextLoader {
 
 	/**
 	 * Adapts a {@link ContextCustomizer} to a {@link ApplicationContextInitializer} so
-	 * that it can be triggered via {@link SpringApplication}.
+	 * that it can be triggered through {@link SpringApplication}.
 	 */
 	private static class ContextCustomizerAdapter
 			implements ApplicationContextInitializer<ConfigurableApplicationContext> {

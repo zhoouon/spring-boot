@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -94,6 +94,7 @@ class NoUniqueBeanDefinitionFailureAnalyzerTests {
 	}
 
 	private BeanCreationException createFailure(Class<?> consumer) {
+		this.context.registerBean("beanOne", TestBean.class);
 		this.context.register(DuplicateBeansProducer.class, consumer);
 		this.context.setParent(new AnnotationConfigApplicationContext(ParentProducer.class));
 		try {
@@ -110,12 +111,11 @@ class NoUniqueBeanDefinitionFailureAnalyzerTests {
 	}
 
 	private void assertFoundBeans(FailureAnalysis analysis) {
+		assertThat(analysis.getDescription()).contains("beanOne: defined in unknown location");
 		assertThat(analysis.getDescription())
-				.contains("beanOne: defined by method 'beanOne' in " + DuplicateBeansProducer.class.getName());
+			.contains("beanTwo: defined by method 'beanTwo' in " + DuplicateBeansProducer.class.getName());
 		assertThat(analysis.getDescription())
-				.contains("beanTwo: defined by method 'beanTwo' in " + DuplicateBeansProducer.class.getName());
-		assertThat(analysis.getDescription())
-				.contains("beanThree: defined by method 'beanThree' in " + ParentProducer.class.getName());
+			.contains("beanThree: defined by method 'beanThree' in " + ParentProducer.class.getName());
 		assertThat(analysis.getDescription()).contains("barTestBean");
 		assertThat(analysis.getDescription()).contains("fooTestBean");
 		assertThat(analysis.getDescription()).contains("xmlTestBean");
@@ -125,11 +125,6 @@ class NoUniqueBeanDefinitionFailureAnalyzerTests {
 	@ComponentScan(basePackageClasses = TestBean.class)
 	@ImportResource("/org/springframework/boot/diagnostics/analyzer/nounique/producer.xml")
 	static class DuplicateBeansProducer {
-
-		@Bean
-		TestBean beanOne() {
-			return new TestBean();
-		}
 
 		@Bean
 		TestBean beanTwo() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +27,9 @@ import java.util.Map;
 import javax.validation.Validation;
 
 import org.junit.jupiter.api.Test;
-import org.mockito.Answers;
 import org.mockito.InOrder;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import org.springframework.boot.context.properties.bind.Bindable.BindRestriction;
 import org.springframework.boot.context.properties.bind.validation.ValidationBindHandler;
@@ -54,6 +55,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 
@@ -72,38 +74,40 @@ class BinderTests {
 	@Test
 	void createWhenSourcesIsNullArrayShouldThrowException() {
 		assertThatIllegalArgumentException().isThrownBy(() -> new Binder((ConfigurationPropertySource[]) null))
-				.withMessageContaining("Sources must not be null");
+			.withMessageContaining("Sources must not be null");
 	}
 
 	@Test
-	void creatWhenSourcesIsNullIterableShouldThrowException() {
+	void createWhenSourcesIsNullIterableShouldThrowException() {
 		assertThatIllegalArgumentException().isThrownBy(() -> new Binder((Iterable<ConfigurationPropertySource>) null))
-				.withMessageContaining("Sources must not be null");
+			.withMessageContaining("Sources must not be null");
 	}
 
 	@Test
 	void createWhenArraySourcesContainsNullElementShouldThrowException() {
 		assertThatIllegalArgumentException().isThrownBy(() -> new Binder(new ConfigurationPropertySource[] { null }))
-				.withMessageContaining("Sources must not contain null elements");
+			.withMessageContaining("Sources must not contain null elements");
 	}
 
 	@Test
 	void createWhenIterableSourcesContainsNullElementShouldThrowException() {
 		assertThatIllegalArgumentException().isThrownBy(() -> new Binder(Collections.singletonList(null)))
-				.withMessageContaining("Sources must not contain null elements");
+			.withMessageContaining("Sources must not contain null elements");
 	}
 
 	@Test
 	void bindWhenNameIsNullShouldThrowException() {
-		assertThatIllegalArgumentException().isThrownBy(() -> this.binder.bind((ConfigurationPropertyName) null,
-				Bindable.of(String.class), BindHandler.DEFAULT)).withMessageContaining("Name must not be null");
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> this.binder.bind((ConfigurationPropertyName) null, Bindable.of(String.class),
+					BindHandler.DEFAULT))
+			.withMessageContaining("Name must not be null");
 	}
 
 	@Test
 	void bindWhenTargetIsNullShouldThrowException() {
 		assertThatIllegalArgumentException()
-				.isThrownBy(() -> this.binder.bind(ConfigurationPropertyName.of("foo"), null, BindHandler.DEFAULT))
-				.withMessageContaining("Target must not be null");
+			.isThrownBy(() -> this.binder.bind(ConfigurationPropertyName.of("foo"), null, BindHandler.DEFAULT))
+			.withMessageContaining("Target must not be null");
 	}
 
 	@Test
@@ -174,7 +178,7 @@ class BinderTests {
 	@Test
 	void bindToValueShouldTriggerOnSuccess() {
 		this.sources.add(new MockConfigurationPropertySource("foo", "1", "line1"));
-		BindHandler handler = mock(BindHandler.class, Answers.CALLS_REAL_METHODS);
+		BindHandler handler = mockBindHandler();
 		Bindable<Integer> target = Bindable.of(Integer.class);
 		this.binder.bind("foo", target, handler);
 		InOrder ordered = inOrder(handler);
@@ -183,7 +187,7 @@ class BinderTests {
 
 	@Test
 	void bindOrCreateWhenNotBoundShouldTriggerOnCreate() {
-		BindHandler handler = mock(BindHandler.class, Answers.CALLS_REAL_METHODS);
+		BindHandler handler = mock(BindHandler.class);
 		Bindable<JavaBean> target = Bindable.of(JavaBean.class);
 		this.binder.bindOrCreate("foo", target, handler);
 		InOrder ordered = inOrder(handler);
@@ -219,36 +223,36 @@ class BinderTests {
 	@Test
 	void bindToJavaBeanShouldTriggerOnSuccess() {
 		this.sources.add(new MockConfigurationPropertySource("foo.value", "bar", "line1"));
-		BindHandler handler = mock(BindHandler.class, Answers.CALLS_REAL_METHODS);
+		BindHandler handler = mockBindHandler();
 		Bindable<JavaBean> target = Bindable.of(JavaBean.class);
 		this.binder.bind("foo", target, handler);
 		InOrder inOrder = inOrder(handler);
-		inOrder.verify(handler).onSuccess(eq(ConfigurationPropertyName.of("foo.value")), eq(Bindable.of(String.class)),
-				any(), eq("bar"));
-		inOrder.verify(handler).onSuccess(eq(ConfigurationPropertyName.of("foo")), eq(target), any(),
-				isA(JavaBean.class));
+		inOrder.verify(handler)
+			.onSuccess(eq(ConfigurationPropertyName.of("foo.value")), eq(Bindable.of(String.class)), any(), eq("bar"));
+		inOrder.verify(handler)
+			.onSuccess(eq(ConfigurationPropertyName.of("foo")), eq(target), any(), isA(JavaBean.class));
 	}
 
 	@Test
 	void bindWhenHasCustomDefaultHandlerShouldTriggerOnSuccess() {
 		this.sources.add(new MockConfigurationPropertySource("foo.value", "bar", "line1"));
-		BindHandler handler = mock(BindHandler.class, Answers.CALLS_REAL_METHODS);
+		BindHandler handler = mockBindHandler();
 		Binder binder = new Binder(this.sources, null, null, null, handler);
 		Bindable<JavaBean> target = Bindable.of(JavaBean.class);
 		binder.bind("foo", target);
 		InOrder inOrder = inOrder(handler);
-		inOrder.verify(handler).onSuccess(eq(ConfigurationPropertyName.of("foo.value")), eq(Bindable.of(String.class)),
-				any(), eq("bar"));
-		inOrder.verify(handler).onSuccess(eq(ConfigurationPropertyName.of("foo")), eq(target), any(),
-				isA(JavaBean.class));
+		inOrder.verify(handler)
+			.onSuccess(eq(ConfigurationPropertyName.of("foo.value")), eq(Bindable.of(String.class)), any(), eq("bar"));
+		inOrder.verify(handler)
+			.onSuccess(eq(ConfigurationPropertyName.of("foo")), eq(target), any(), isA(JavaBean.class));
 	}
 
 	@Test
 	void bindWhenHasMalformedDateShouldThrowException() {
 		this.sources.add(new MockConfigurationPropertySource("foo", "2014-04-01T01:30:00.000-05:00"));
 		assertThatExceptionOfType(BindException.class)
-				.isThrownBy(() -> this.binder.bind("foo", Bindable.of(LocalDate.class)))
-				.withCauseInstanceOf(ConversionFailedException.class);
+			.isThrownBy(() -> this.binder.bind("foo", Bindable.of(LocalDate.class)))
+			.withCauseInstanceOf(ConversionFailedException.class);
 	}
 
 	@Test
@@ -299,7 +303,7 @@ class BinderTests {
 		source.put("value", "hello");
 		source.put("", "bar");
 		Iterable<ConfigurationPropertySource> propertySources = ConfigurationPropertySources
-				.from(new MapPropertySource("test", source));
+			.from(new MapPropertySource("test", source));
 		propertySources.forEach(this.sources::add);
 		Bindable<JavaBean> target = Bindable.of(JavaBean.class);
 		JavaBean result = this.binder.bind("", target).get();
@@ -345,7 +349,7 @@ class BinderTests {
 	@Test
 	void bindToJavaBeanWithPublicConstructorWhenHasBindRestriction() {
 		Bindable<JavaBeanWithPublicConstructor> bindable = Bindable.of(JavaBeanWithPublicConstructor.class)
-				.withBindRestrictions(BindRestriction.NO_DIRECT_PROPERTY);
+			.withBindRestrictions(BindRestriction.NO_DIRECT_PROPERTY);
 		JavaBeanWithPublicConstructor result = bindToJavaBeanWithPublicConstructor(bindable);
 		assertThat(result.getValue()).isEqualTo("setter");
 	}
@@ -357,6 +361,14 @@ class BinderTests {
 		source.put("foo.value", "setter");
 		this.sources.add(source);
 		return this.binder.bindOrCreate("foo", bindable);
+	}
+
+	private BindHandler mockBindHandler() {
+		BindHandler handler = mock(BindHandler.class);
+		given(handler.onStart(any(), any(), any())).willAnswer(InvocationArgument.index(1));
+		given(handler.onCreate(any(), any(), any(), any())).willAnswer(InvocationArgument.index(3));
+		given(handler.onSuccess(any(), any(), any(), any())).willAnswer(InvocationArgument.index(3));
+		return handler;
 	}
 
 	static class JavaBean {
@@ -483,6 +495,25 @@ class BinderTests {
 			JavaBean value = new JavaBean();
 			value.setValue(text);
 			setValue(value);
+		}
+
+	}
+
+	private static final class InvocationArgument<T> implements Answer<T> {
+
+		private final int index;
+
+		private InvocationArgument(int index) {
+			this.index = index;
+		}
+
+		@Override
+		public T answer(InvocationOnMock invocation) throws Throwable {
+			return invocation.getArgument(this.index);
+		}
+
+		private static <T> InvocationArgument<T> index(int index) {
+			return new InvocationArgument<>(index);
 		}
 
 	}

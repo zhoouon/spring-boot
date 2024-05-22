@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,13 @@ import java.util.Map;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.sun.jna.Platform;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.stubbing.Answer;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import org.springframework.boot.buildpack.platform.docker.DockerApi;
 import org.springframework.boot.buildpack.platform.docker.DockerApi.ContainerApi;
@@ -131,7 +135,7 @@ class LifecycleTests {
 		Lifecycle lifecycle = createLifecycle();
 		lifecycle.execute();
 		assertThatIllegalStateException().isThrownBy(lifecycle::execute)
-				.withMessage("Lifecycle has already been executed");
+			.withMessage("Lifecycle has already been executed");
 	}
 
 	@Test
@@ -140,7 +144,7 @@ class LifecycleTests {
 		given(this.docker.container().create(any(), any())).willAnswer(answerWithGeneratedContainerId());
 		given(this.docker.container().wait(any())).willReturn(ContainerStatus.of(9, null));
 		assertThatExceptionOfType(BuilderException.class).isThrownBy(() -> createLifecycle().execute())
-				.withMessage("Builder lifecycle 'creator' failed with status code 9");
+			.withMessage("Builder lifecycle 'creator' failed with status code 9");
 	}
 
 	@Test
@@ -161,8 +165,8 @@ class LifecycleTests {
 		given(this.docker.container().create(any(), any())).willAnswer(answerWithGeneratedContainerId());
 		given(this.docker.container().wait(any())).willReturn(ContainerStatus.of(0, null));
 		assertThatIllegalStateException()
-				.isThrownBy(() -> createLifecycle("builder-metadata-unsupported-api.json").execute())
-				.withMessageContaining("Detected platform API versions '0.2' are not included in supported versions");
+			.isThrownBy(() -> createLifecycle("builder-metadata-unsupported-api.json").execute())
+			.withMessageContaining("Detected platform API versions '0.2' are not included in supported versions");
 	}
 
 	@Test
@@ -171,9 +175,8 @@ class LifecycleTests {
 		given(this.docker.container().create(any(), any())).willAnswer(answerWithGeneratedContainerId());
 		given(this.docker.container().wait(any())).willReturn(ContainerStatus.of(0, null));
 		assertThatIllegalStateException()
-				.isThrownBy(() -> createLifecycle("builder-metadata-unsupported-apis.json").execute())
-				.withMessageContaining(
-						"Detected platform API versions '0.1,0.2' are not included in supported versions");
+			.isThrownBy(() -> createLifecycle("builder-metadata-unsupported-apis.json").execute())
+			.withMessageContaining("Detected platform API versions '0.1,0.2' are not included in supported versions");
 	}
 
 	@Test
@@ -209,7 +212,7 @@ class LifecycleTests {
 		given(this.docker.container().create(any(), any())).willAnswer(answerWithGeneratedContainerId());
 		given(this.docker.container().wait(any())).willReturn(ContainerStatus.of(0, null));
 		BuildRequest request = getTestRequest().withBuildCache(Cache.volume("build-volume"))
-				.withLaunchCache(Cache.volume("launch-volume"));
+			.withLaunchCache(Cache.volume("launch-volume"));
 		createLifecycle(request).execute();
 		assertPhaseWasRun("creator", withExpectedConfig("lifecycle-creator-cache-volumes.json"));
 		assertThat(this.out.toString()).contains("Successfully built image 'docker.io/library/my-application:latest'");
@@ -318,9 +321,19 @@ class LifecycleTests {
 
 	private IOConsumer<ContainerConfig> withExpectedConfig(String name) {
 		return (config) -> {
-			InputStream in = getClass().getResourceAsStream(name);
-			String json = FileCopyUtils.copyToString(new InputStreamReader(in, StandardCharsets.UTF_8));
-			assertThat(config.toString()).isEqualToIgnoringWhitespace(json);
+			try {
+				InputStream in = getClass().getResourceAsStream(name);
+				String jsonString = FileCopyUtils.copyToString(new InputStreamReader(in, StandardCharsets.UTF_8));
+				JSONObject json = new JSONObject(jsonString);
+				if (Platform.isWindows()) {
+					JSONObject hostConfig = json.getJSONObject("HostConfig");
+					hostConfig.remove("SecurityOpt");
+				}
+				JSONAssert.assertEquals(config.toString(), json, true);
+			}
+			catch (JSONException ex) {
+				throw new IOException(ex);
+			}
 		};
 	}
 

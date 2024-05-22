@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskExecutionException;
+import org.gradle.work.DisableCachingByDefault;
 
 import org.springframework.boot.loader.tools.BuildPropertiesWriter;
 import org.springframework.boot.loader.tools.BuildPropertiesWriter.ProjectDetails;
@@ -41,6 +42,7 @@ import org.springframework.boot.loader.tools.BuildPropertiesWriter.ProjectDetail
  * @author Andy Wilkinson
  * @since 2.0.0
  */
+@DisableCachingByDefault(because = "Not worth caching")
 public class BuildInfo extends ConventionTask {
 
 	private final BuildInfoProperties properties = new BuildInfoProperties(getProject());
@@ -48,8 +50,9 @@ public class BuildInfo extends ConventionTask {
 	private final DirectoryProperty destinationDir;
 
 	public BuildInfo() {
-		this.destinationDir = getProject().getObjects().directoryProperty()
-				.convention(getProject().getLayout().getBuildDirectory());
+		this.destinationDir = getProject().getObjects()
+			.directoryProperty()
+			.convention(getProject().getLayout().getBuildDirectory());
 	}
 
 	/**
@@ -63,7 +66,7 @@ public class BuildInfo extends ConventionTask {
 					this.properties.getVersion(), this.properties.getName(), this.properties.getTime(),
 					coerceToStringValues(this.properties.getAdditional()));
 			new BuildPropertiesWriter(new File(getDestinationDir(), "build-info.properties"))
-					.writeBuildProperties(details);
+				.writeBuildProperties(details);
 		}
 		catch (IOException ex) {
 			throw new TaskExecutionException(this, ex);

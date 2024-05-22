@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,8 +35,8 @@ import org.springframework.core.annotation.Order;
 /**
  * {@link ASTTransformation} to resolve beans declarations inside application source
  * files. Users only need to define a <code>beans{}</code> DSL element, and this
- * transformation will remove it and make it accessible to the Spring application via an
- * interface.
+ * transformation will remove it and make it accessible to the Spring application through
+ * an interface.
  *
  * @author Dave Syer
  * @since 1.0.0

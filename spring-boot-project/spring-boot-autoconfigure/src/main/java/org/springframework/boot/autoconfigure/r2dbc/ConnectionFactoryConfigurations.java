@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,13 +59,14 @@ abstract class ConnectionFactoryConfigurations {
 			List<ConnectionFactoryOptionsBuilderCustomizer> optionsCustomizers) {
 		try {
 			return org.springframework.boot.r2dbc.ConnectionFactoryBuilder
-					.withOptions(new ConnectionFactoryOptionsInitializer().initialize(properties,
-							() -> EmbeddedDatabaseConnection.get(classLoader)))
-					.configure((options) -> {
-						for (ConnectionFactoryOptionsBuilderCustomizer optionsCustomizer : optionsCustomizers) {
-							optionsCustomizer.customize(options);
-						}
-					}).build();
+				.withOptions(new ConnectionFactoryOptionsInitializer().initialize(properties,
+						() -> EmbeddedDatabaseConnection.get(classLoader)))
+				.configure((options) -> {
+					for (ConnectionFactoryOptionsBuilderCustomizer optionsCustomizer : optionsCustomizers) {
+						optionsCustomizer.customize(options);
+					}
+				})
+				.build();
 		}
 		catch (IllegalStateException ex) {
 			String message = ex.getMessage();
@@ -126,7 +127,7 @@ abstract class ConnectionFactoryConfigurations {
 
 	/**
 	 * {@link Condition} that checks that a {@link ConnectionPool} is requested. The
-	 * condition matches if pooling was opt-in via configuration. If any of the
+	 * condition matches if pooling was opt-in through configuration. If any of the
 	 * spring.r2dbc.pool.* properties have been configured, an exception is thrown if the
 	 * URL also contains pooling-related options or io.r2dbc.pool.ConnectionPool is not on
 	 * the class path.
@@ -135,8 +136,8 @@ abstract class ConnectionFactoryConfigurations {
 
 		@Override
 		public ConditionOutcome getMatchOutcome(ConditionContext context, AnnotatedTypeMetadata metadata) {
-			BindResult<Pool> pool = Binder.get(context.getEnvironment()).bind("spring.r2dbc.pool",
-					Bindable.of(Pool.class));
+			BindResult<Pool> pool = Binder.get(context.getEnvironment())
+				.bind("spring.r2dbc.pool", Bindable.of(Pool.class));
 			if (hasPoolUrl(context.getEnvironment())) {
 				if (pool.isBound()) {
 					throw new MultipleConnectionPoolConfigurationsException();

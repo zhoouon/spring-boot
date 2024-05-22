@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaLibraryPlugin;
 import org.gradle.api.plugins.JavaPlugin;
-import org.gradle.api.plugins.JavaPluginConvention;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.publish.PublishingExtension;
 import org.gradle.api.publish.maven.MavenPublication;
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin;
@@ -80,6 +80,7 @@ import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.Sync;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskExecutionException;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.Jar;
 import org.gradle.api.tasks.javadoc.Javadoc;
 import org.gradle.external.javadoc.StandardJavadocDocletOptions;
@@ -145,15 +146,15 @@ public class MavenPluginPlugin implements Plugin<Project> {
 	private void addPopulateIntTestMavenRepositoryTask(Project project) {
 		Configuration runtimeClasspathWithMetadata = project.getConfigurations().create("runtimeClasspathWithMetadata");
 		runtimeClasspathWithMetadata
-				.extendsFrom(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
+			.extendsFrom(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
 		runtimeClasspathWithMetadata.attributes((attributes) -> attributes.attribute(DocsType.DOCS_TYPE_ATTRIBUTE,
 				project.getObjects().named(DocsType.class, "maven-repository")));
 		RuntimeClasspathMavenRepository runtimeClasspathMavenRepository = project.getTasks()
-				.create("runtimeClasspathMavenRepository", RuntimeClasspathMavenRepository.class);
+			.create("runtimeClasspathMavenRepository", RuntimeClasspathMavenRepository.class);
 		runtimeClasspathMavenRepository.getOutputDirectory()
-				.set(new File(project.getBuildDir(), "runtime-classpath-repository"));
+			.set(new File(project.getBuildDir(), "runtime-classpath-repository"));
 		project.getDependencies()
-				.components((components) -> components.all(MavenRepositoryComponentMetadataRule.class));
+			.components((components) -> components.all(MavenRepositoryComponentMetadataRule.class));
 		Sync task = project.getTasks().create("populateIntTestMavenRepository", Sync.class);
 		task.setDestinationDir(new File(project.getBuildDir(), "int-test-maven-repository"));
 		task.with(copyIntTestMavenRepositoryFiles(project, runtimeClasspathMavenRepository));
@@ -225,7 +226,7 @@ public class MavenPluginPlugin implements Plugin<Project> {
 	}
 
 	private SourceSet getMainSourceSet(Project project) {
-		SourceSetContainer sourceSets = project.getConvention().getPlugin(JavaPluginConvention.class).getSourceSets();
+		SourceSetContainer sourceSets = project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets();
 		return sourceSets.getByName(SourceSet.MAIN_SOURCE_SET_NAME);
 	}
 
@@ -236,8 +237,8 @@ public class MavenPluginPlugin implements Plugin<Project> {
 
 	private FormatHelpMojoSource createFormatHelpMojoSource(Project project, MavenExec generateHelpMojoTask,
 			File generatedHelpMojoDir) {
-		FormatHelpMojoSource formatHelpMojoSource = project.getTasks().create("formatHelpMojoSource",
-				FormatHelpMojoSource.class);
+		FormatHelpMojoSource formatHelpMojoSource = project.getTasks()
+			.create("formatHelpMojoSource", FormatHelpMojoSource.class);
 		formatHelpMojoSource.setGenerator(generateHelpMojoTask);
 		formatHelpMojoSource.setOutputDir(generatedHelpMojoDir);
 		return formatHelpMojoSource;
@@ -258,8 +259,10 @@ public class MavenPluginPlugin implements Plugin<Project> {
 		MavenExec generatePluginDescriptor = project.getTasks().create("generatePluginDescriptor", MavenExec.class);
 		generatePluginDescriptor.args("org.apache.maven.plugins:maven-plugin-plugin:3.6.0:descriptor");
 		generatePluginDescriptor.getOutputs().dir(new File(mavenDir, "target/classes/META-INF/maven"));
-		generatePluginDescriptor.getInputs().dir(new File(mavenDir, "target/classes/org"))
-				.withPathSensitivity(PathSensitivity.RELATIVE).withPropertyName("plugin classes");
+		generatePluginDescriptor.getInputs()
+			.dir(new File(mavenDir, "target/classes/org"))
+			.withPathSensitivity(PathSensitivity.RELATIVE)
+			.withPropertyName("plugin classes");
 		generatePluginDescriptor.setProjectDir(mavenDir);
 		return generatePluginDescriptor;
 	}
@@ -270,9 +273,15 @@ public class MavenPluginPlugin implements Plugin<Project> {
 	}
 
 	private void addPrepareMavenBinariesTask(Project project) {
-		PrepareMavenBinaries task = project.getTasks().create("prepareMavenBinaries", PrepareMavenBinaries.class);
-		task.setOutputDir(new File(project.getBuildDir(), "maven-binaries"));
-		project.getTasks().getByName(IntegrationTestPlugin.INT_TEST_TASK_NAME).dependsOn(task);
+		TaskProvider<PrepareMavenBinaries> task = project.getTasks()
+			.register("prepareMavenBinaries", PrepareMavenBinaries.class, (prepareMavenBinaries) -> prepareMavenBinaries
+				.setOutputDir(new File(project.getBuildDir(), "maven-binaries")));
+		project.getTasks()
+			.getByName(IntegrationTestPlugin.INT_TEST_TASK_NAME)
+			.getInputs()
+			.dir(task.map(PrepareMavenBinaries::getOutputDir))
+			.withPathSensitivity(PathSensitivity.RELATIVE)
+			.withPropertyName("mavenBinaries");
 	}
 
 	private void replaceVersionPlaceholder(CopySpec copy, Project project) {
@@ -284,10 +293,13 @@ public class MavenPluginPlugin implements Plugin<Project> {
 	}
 
 	private void addExtractVersionPropertiesTask(Project project) {
-		ExtractVersionProperties extractVersionProperties = project.getTasks().create("extractVersionProperties",
-				ExtractVersionProperties.class);
+		ExtractVersionProperties extractVersionProperties = project.getTasks()
+			.create("extractVersionProperties", ExtractVersionProperties.class);
 		extractVersionProperties.setEffectiveBoms(project.getConfigurations().create("versionProperties"));
-		extractVersionProperties.getDestination().set(project.getLayout().getBuildDirectory().dir("generated-resources")
+		extractVersionProperties.getDestination()
+			.set(project.getLayout()
+				.getBuildDirectory()
+				.dir("generated-resources")
 				.map((dir) -> dir.file("extracted-versions.properties")));
 	}
 
@@ -299,8 +311,9 @@ public class MavenPluginPlugin implements Plugin<Project> {
 
 		void setGenerator(Task generator) {
 			this.generator = generator;
-			getInputs().files(this.generator).withPathSensitivity(PathSensitivity.RELATIVE)
-					.withPropertyName("generated source");
+			getInputs().files(this.generator)
+				.withPathSensitivity(PathSensitivity.RELATIVE)
+				.withPropertyName("generated source");
 		}
 
 		@OutputDirectory
@@ -317,7 +330,7 @@ public class MavenPluginPlugin implements Plugin<Project> {
 			FileFormatter formatter = new FileFormatter(FORMATTER_CONFIG);
 			for (File output : this.generator.getOutputs().getFiles()) {
 				formatter.formatFiles(getProject().fileTree(output), StandardCharsets.UTF_8)
-						.forEach((edit) -> save(output, edit));
+					.forEach((edit) -> save(output, edit));
 			}
 		}
 
@@ -346,10 +359,11 @@ public class MavenPluginPlugin implements Plugin<Project> {
 
 		@Override
 		public void execute(ComponentMetadataContext context) {
-			context.getDetails().maybeAddVariant("compileWithMetadata", "compile",
-					(variant) -> configureVariant(context, variant));
-			context.getDetails().maybeAddVariant("apiElementsWithMetadata", "apiElements",
-					(variant) -> configureVariant(context, variant));
+			context.getDetails()
+				.maybeAddVariant("compileWithMetadata", "compile", (variant) -> configureVariant(context, variant));
+			context.getDetails()
+				.maybeAddVariant("apiElementsWithMetadata", "apiElements",
+						(variant) -> configureVariant(context, variant));
 		}
 
 		private void configureVariant(ComponentMetadataContext context, VariantMetadata variant) {
@@ -392,12 +406,15 @@ public class MavenPluginPlugin implements Plugin<Project> {
 			for (ResolvedArtifactResult result : this.runtimeClasspath.getIncoming().getArtifacts()) {
 				if (result.getId().getComponentIdentifier() instanceof ModuleComponentIdentifier) {
 					ModuleComponentIdentifier identifier = (ModuleComponentIdentifier) result.getId()
-							.getComponentIdentifier();
-					String fileName = result.getFile().getName()
-							.replace(identifier.getVersion() + "-" + identifier.getVersion(), identifier.getVersion());
-					File repositoryLocation = this.outputDirectory.dir(identifier.getGroup().replace('.', '/') + "/"
-							+ identifier.getModule() + "/" + identifier.getVersion() + "/" + fileName).get()
-							.getAsFile();
+						.getComponentIdentifier();
+					String fileName = result.getFile()
+						.getName()
+						.replace(identifier.getVersion() + "-" + identifier.getVersion(), identifier.getVersion());
+					File repositoryLocation = this.outputDirectory
+						.dir(identifier.getGroup().replace('.', '/') + "/" + identifier.getModule() + "/"
+								+ identifier.getVersion() + "/" + fileName)
+						.get()
+						.getAsFile();
 					repositoryLocation.getParentFile().mkdirs();
 					try {
 						Files.copy(result.getFile().toPath(), repositoryLocation.toPath(),
@@ -504,8 +521,8 @@ public class MavenPluginPlugin implements Plugin<Project> {
 
 		private String get(String expression) {
 			try {
-				Node node = (Node) this.xpath.compile("/project/" + expression).evaluate(this.document,
-						XPathConstants.NODE);
+				Node node = (Node) this.xpath.compile("/project/" + expression)
+					.evaluate(this.document, XPathConstants.NODE);
 				String text = (node != null) ? node.getTextContent() : null;
 				Assert.hasLength(text, () -> "No result for expression " + expression);
 				return text;

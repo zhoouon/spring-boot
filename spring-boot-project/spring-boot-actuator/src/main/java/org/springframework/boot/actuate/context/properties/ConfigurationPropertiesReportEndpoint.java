@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ import com.fasterxml.jackson.databind.introspect.Annotated;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMethod;
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.BeanSerializerFactory;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
@@ -48,6 +49,7 @@ import com.fasterxml.jackson.databind.ser.PropertyWriter;
 import com.fasterxml.jackson.databind.ser.SerializerFactory;
 import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -80,6 +82,7 @@ import org.springframework.core.annotation.MergedAnnotations.SearchStrategy;
 import org.springframework.core.env.PropertySource;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.util.unit.DataSize;
 
 /**
  * {@link Endpoint @Endpoint} to expose application properties from
@@ -188,18 +191,18 @@ public class ConfigurationPropertiesReportEndpoint implements ApplicationContext
 		builder.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 		builder.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 		builder.configure(SerializationFeature.WRITE_DURATIONS_AS_TIMESTAMPS, false);
-		JsonMapper.builder();
 		builder.configure(MapperFeature.USE_STD_BEAN_NAMING, true);
 		builder.serializationInclusion(Include.NON_NULL);
 		applyConfigurationPropertiesFilter(builder);
 		applySerializationModifier(builder);
 		builder.addModule(new JavaTimeModule());
+		builder.addModule(new ConfigurationPropertiesModule());
 	}
 
 	private void applyConfigurationPropertiesFilter(JsonMapper.Builder builder) {
 		builder.annotationIntrospector(new ConfigurationPropertiesAnnotationIntrospector());
-		builder.filterProvider(
-				new SimpleFilterProvider().setDefaultFilter(new ConfigurationPropertiesPropertyFilter()));
+		builder
+			.filterProvider(new SimpleFilterProvider().setDefaultFilter(new ConfigurationPropertiesPropertyFilter()));
 	}
 
 	/**
@@ -208,16 +211,17 @@ public class ConfigurationPropertiesReportEndpoint implements ApplicationContext
 	 */
 	private void applySerializationModifier(JsonMapper.Builder builder) {
 		SerializerFactory factory = BeanSerializerFactory.instance
-				.withSerializerModifier(new GenericSerializerModifier());
+			.withSerializerModifier(new GenericSerializerModifier());
 		builder.serializerFactory(factory);
 	}
 
 	private ContextConfigurationProperties describeBeans(ObjectMapper mapper, ApplicationContext context,
 			Predicate<ConfigurationPropertiesBean> beanFilterPredicate) {
 		Map<String, ConfigurationPropertiesBean> beans = ConfigurationPropertiesBean.getAll(context);
-		Map<String, ConfigurationPropertiesBeanDescriptor> descriptors = beans.values().stream()
-				.filter(beanFilterPredicate)
-				.collect(Collectors.toMap(ConfigurationPropertiesBean::getName, (bean) -> describeBean(mapper, bean)));
+		Map<String, ConfigurationPropertiesBeanDescriptor> descriptors = beans.values()
+			.stream()
+			.filter(beanFilterPredicate)
+			.collect(Collectors.toMap(ConfigurationPropertiesBean::getName, (bean) -> describeBean(mapper, bean)));
 		return new ContextConfigurationProperties(descriptors,
 				(context.getParent() != null) ? context.getParent().getId() : null);
 	}
@@ -475,6 +479,17 @@ public class ConfigurationPropertiesReportEndpoint implements ApplicationContext
 	}
 
 	/**
+	 * {@link SimpleModule} for configure the serializer.
+	 */
+	private static final class ConfigurationPropertiesModule extends SimpleModule {
+
+		private ConfigurationPropertiesModule() {
+			addSerializer(DataSize.class, ToStringSerializer.instance);
+		}
+
+	}
+
+	/**
 	 * {@link BeanSerializerModifier} to return only relevant configuration properties.
 	 */
 	protected static class GenericSerializerModifier extends BeanSerializerModifier {
@@ -503,9 +518,10 @@ public class ConfigurationPropertiesReportEndpoint implements ApplicationContext
 					names = new String[parameters.length];
 				}
 				for (int i = 0; i < parameters.length; i++) {
-					String name = MergedAnnotations.from(parameters[i]).get(Name.class)
-							.getValue(MergedAnnotation.VALUE, String.class)
-							.orElse((names[i] != null) ? names[i] : parameters[i].getName());
+					String name = MergedAnnotations.from(parameters[i])
+						.get(Name.class)
+						.getValue(MergedAnnotation.VALUE, String.class)
+						.orElse((names[i] != null) ? names[i] : parameters[i].getName());
 					if (name.equals(writer.getName())) {
 						return true;
 					}
@@ -556,8 +572,8 @@ public class ConfigurationPropertiesReportEndpoint implements ApplicationContext
 
 		private Constructor<?> findBindConstructor(Class<?> type) {
 			boolean classConstructorBinding = MergedAnnotations
-					.from(type, SearchStrategy.TYPE_HIERARCHY_AND_ENCLOSING_CLASSES)
-					.isPresent(ConstructorBinding.class);
+				.from(type, SearchStrategy.TYPE_HIERARCHY_AND_ENCLOSING_CLASSES)
+				.isPresent(ConstructorBinding.class);
 			if (KotlinDetector.isKotlinPresent() && KotlinDetector.isKotlinType(type)) {
 				Constructor<?> constructor = BeanUtils.findPrimaryConstructor(type);
 				if (constructor != null) {
@@ -569,10 +585,11 @@ public class ConfigurationPropertiesReportEndpoint implements ApplicationContext
 
 		private Constructor<?> findBindConstructor(boolean classConstructorBinding, Constructor<?>... candidates) {
 			List<Constructor<?>> candidateConstructors = Arrays.stream(candidates)
-					.filter((constructor) -> constructor.getParameterCount() > 0).collect(Collectors.toList());
+				.filter((constructor) -> constructor.getParameterCount() > 0)
+				.collect(Collectors.toList());
 			List<Constructor<?>> flaggedConstructors = candidateConstructors.stream()
-					.filter((candidate) -> MergedAnnotations.from(candidate).isPresent(ConstructorBinding.class))
-					.collect(Collectors.toList());
+				.filter((candidate) -> MergedAnnotations.from(candidate).isPresent(ConstructorBinding.class))
+				.collect(Collectors.toList());
 			if (flaggedConstructors.size() == 1) {
 				return flaggedConstructors.get(0);
 			}

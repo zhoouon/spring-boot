@@ -11,7 +11,7 @@
 :docinfo: shared,private
 :attribute-missing: warn
 :chomp: default headers packages
-:spring-boot-artifactory-repo: snapshot
+:artifact-release-type: snapshot
 :github-tag: main
 :spring-boot-version: current
 :github-repo: spring-projects/spring-boot
@@ -94,7 +94,6 @@
 :spring-security: https://spring.io/projects/spring-security
 :spring-security-docs: https://docs.spring.io/spring-security/reference/{spring-security-version}
 :spring-security-oauth2: https://spring.io/projects/spring-security-oauth
-:spring-security-oauth2-docs: https://projects.spring.io/spring-security-oauth/docs/oauth2.html
 :spring-session: https://spring.io/projects/spring-session
 :spring-webservices-docs: https://docs.spring.io/spring-ws/docs/{spring-webservices-version}/reference/html/
 :ant-docs: https://ant.apache.org/manual

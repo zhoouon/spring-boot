@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ package org.springframework.boot.buildpack.platform.build;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.function.Consumer;
+
+import com.sun.jna.Platform;
 
 import org.springframework.boot.buildpack.platform.docker.DockerApi;
 import org.springframework.boot.buildpack.platform.docker.LogUpdateEvent;
@@ -201,6 +203,9 @@ class Lifecycle implements Closeable {
 		else {
 			phase.withBinding(Binding.from(DOMAIN_SOCKET_PATH, DOMAIN_SOCKET_PATH));
 		}
+		if (!Platform.isWindows()) {
+			phase.withSecurityOption("label=disable");
+		}
 	}
 
 	private boolean isVerboseLogging() {
@@ -234,8 +239,8 @@ class Lifecycle implements Closeable {
 		}
 		try {
 			TarArchive applicationContent = this.request.getApplicationContent(this.builder.getBuildOwner());
-			return this.docker.container().create(config,
-					ContainerContent.of(applicationContent, Directory.APPLICATION));
+			return this.docker.container()
+				.create(config, ContainerContent.of(applicationContent, Directory.APPLICATION));
 		}
 		finally {
 			this.applicationVolumePopulated = true;

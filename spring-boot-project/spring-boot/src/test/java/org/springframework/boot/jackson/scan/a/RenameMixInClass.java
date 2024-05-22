@@ -19,8 +19,8 @@ package org.springframework.boot.jackson.scan.a;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.springframework.boot.jackson.JsonMixin;
-import org.springframework.boot.jackson.Name;
-import org.springframework.boot.jackson.NameAndAge;
+import org.springframework.boot.jackson.types.Name;
+import org.springframework.boot.jackson.types.NameAndAge;
 
 @JsonMixin(type = { Name.class, NameAndAge.class })
 public class RenameMixInClass {

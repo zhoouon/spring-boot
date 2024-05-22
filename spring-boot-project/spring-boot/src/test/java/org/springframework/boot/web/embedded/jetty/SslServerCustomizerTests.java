@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,18 +31,24 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.OS;
 
 import org.springframework.boot.testsupport.junit.DisabledOnOs;
+import org.springframework.boot.web.embedded.test.MockPkcs11Security;
+import org.springframework.boot.web.embedded.test.MockPkcs11SecurityProvider;
 import org.springframework.boot.web.server.Http2;
 import org.springframework.boot.web.server.Ssl;
 import org.springframework.boot.web.server.WebServerException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
  * Tests for {@link SslServerCustomizer}.
  *
  * @author Andy Wilkinson
+ * @author Cyril Dangerville
  */
+@MockPkcs11Security
 class SslServerCustomizerTests {
 
 	@Test
@@ -52,7 +58,7 @@ class SslServerCustomizerTests {
 		assertThat(server.getConnectors()).hasSize(1);
 		List<ConnectionFactory> factories = new ArrayList<>(server.getConnectors()[0].getConnectionFactories());
 		assertThat(factories).extracting((factory) -> (Class) factory.getClass())
-				.containsExactly(SslConnectionFactory.class, HttpConnectionFactory.class);
+			.containsExactly(SslConnectionFactory.class, HttpConnectionFactory.class);
 	}
 
 	@Test
@@ -65,9 +71,9 @@ class SslServerCustomizerTests {
 		Server server = createCustomizedServer(http2);
 		assertThat(server.getConnectors()).hasSize(1);
 		List<ConnectionFactory> factories = new ArrayList<>(server.getConnectors()[0].getConnectionFactories());
-		assertThat(factories).extracting((factory) -> (Class) factory.getClass()).containsExactly(
-				SslConnectionFactory.class, ALPNServerConnectionFactory.class, HTTP2ServerConnectionFactory.class,
-				HttpConnectionFactory.class);
+		assertThat(factories).extracting((factory) -> (Class) factory.getClass())
+			.containsExactly(SslConnectionFactory.class, ALPNServerConnectionFactory.class,
+					HTTP2ServerConnectionFactory.class, HttpConnectionFactory.class);
 	}
 
 	@Test
@@ -83,15 +89,38 @@ class SslServerCustomizerTests {
 	}
 
 	@Test
-	void configureSslWhenSslIsEnabledWithNoKeyStoreThrowsWebServerException() {
+	void configureSslWhenSslIsEnabledWithNoKeyStoreAndNotPkcs11ThrowsException() {
 		Ssl ssl = new Ssl();
 		SslServerCustomizer customizer = new SslServerCustomizer(null, ssl, null, null);
 		assertThatExceptionOfType(Exception.class)
-				.isThrownBy(() -> customizer.configureSsl(new SslContextFactory.Server(), ssl, null))
-				.satisfies((ex) -> {
-					assertThat(ex).isInstanceOf(WebServerException.class);
-					assertThat(ex).hasMessageContaining("Could not load key store 'null'");
-				});
+			.isThrownBy(() -> customizer.configureSsl(new SslContextFactory.Server(), ssl, null))
+			.satisfies((ex) -> {
+				assertThat(ex).isInstanceOf(WebServerException.class);
+				assertThat(ex).hasMessageContaining("Could not load key store 'null'");
+			});
+	}
+
+	@Test
+	void configureSslWhenSslIsEnabledWithPkcs11AndKeyStoreThrowsException() {
+		Ssl ssl = new Ssl();
+		ssl.setKeyStoreType("PKCS11");
+		ssl.setKeyStoreProvider(MockPkcs11SecurityProvider.NAME);
+		ssl.setKeyStore("src/test/resources/test.jks");
+		ssl.setKeyPassword("password");
+		SslServerCustomizer customizer = new SslServerCustomizer(null, ssl, null, null);
+		assertThatIllegalStateException()
+			.isThrownBy(() -> customizer.configureSsl(new SslContextFactory.Server(), ssl, null))
+			.withMessageContaining("must be empty or null for PKCS11 key stores");
+	}
+
+	@Test
+	void customizeWhenSslIsEnabledWithPkcs11AndKeyStoreProvider() {
+		Ssl ssl = new Ssl();
+		ssl.setKeyStoreType("PKCS11");
+		ssl.setKeyStoreProvider(MockPkcs11SecurityProvider.NAME);
+		ssl.setKeyStorePassword("1234");
+		SslServerCustomizer customizer = new SslServerCustomizer(null, ssl, null, null);
+		assertThatNoException().isThrownBy(() -> customizer.configureSsl(new SslContextFactory.Server(), ssl, null));
 	}
 
 	private Server createCustomizedServer() {

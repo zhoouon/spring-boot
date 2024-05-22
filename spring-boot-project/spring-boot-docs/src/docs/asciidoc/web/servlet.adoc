@@ -87,7 +87,10 @@ If you set the configprop:spring.mvc.message-codes-resolver-format[] property `P
 By default, Spring Boot serves static content from a directory called `/static` (or `/public` or `/resources` or `/META-INF/resources`) in the classpath or from the root of the `ServletContext`.
 It uses the `ResourceHttpRequestHandler` from Spring MVC so that you can modify that behavior by adding your own `WebMvcConfigurer` and overriding the `addResourceHandlers` method.
 
-In a stand-alone web application, the default servlet from the container is also enabled and acts as a fallback, serving content from the root of the `ServletContext` if Spring decides not to handle it.
+In a stand-alone web application, the default servlet from the container is not enabled.
+It can be enabled using the configprop:server.servlet.register-default-servlet[] property.
+
+The default servlet acts as a fallback, serving content from the root of the `ServletContext` if Spring decides not to handle it.
 Most of the time, this does not happen (unless you modify the default MVC configuration), because Spring can always handle requests through the `DispatcherServlet`.
 
 By default, resources are mapped on `+/**+`, but you can tune that with the configprop:spring.mvc.static-path-pattern[] property.
@@ -273,6 +276,11 @@ and is incompatible with suffix pattern matching (configprop:spring.mvc.pathmatc
 configprop:spring.mvc.pathmatch.use-registered-suffix-pattern[deprecated]) or mapping the `DispatcherServlet`
 with a servlet prefix (configprop:spring.mvc.servlet.path[]).
 
+By default, Spring MVC will send a 404 Not Found error response if a handler is not found for a request.
+To have a `NoHandlerFoundException` thrown instead, set configprop:spring.mvc.throw-exception-if-no-handler-found to `true`.
+Note that, by default, the <<web#web.servlet.spring-mvc.static-content, serving of static content>> is mapped to `+/**+` and will, therefore, provide a handler for all requests.
+For a `NoHandlerFoundException` to be thrown, you must also set configprop:spring.mvc.static-path-pattern[] to a more specific value such as `/resources/**` or set configprop:spring.web.resources.add-mappings[] to `false` to disable serving of static content entirely.
+
 
 
 [[web.servlet.spring-mvc.binding-initializer]]
@@ -381,7 +389,7 @@ The `ErrorController` then picks up any unhandled exceptions.
 
 
 [[web.servlet.spring-mvc.error-handling.error-pages-without-spring-mvc]]
-===== Mapping Error Pages outside of Spring MVC
+===== Mapping Error Pages Outside of Spring MVC
 For applications that do not use Spring MVC, you can use the `ErrorPageRegistrar` interface to directly register `ErrorPages`.
 This abstraction works directly with the underlying embedded servlet container and works even if you do not have a Spring MVC `DispatcherServlet`.
 
@@ -396,7 +404,7 @@ Note that the default `FilterRegistrationBean` does not include the `ERROR` disp
 
 
 [[web.servlet.spring-mvc.error-handling.in-a-war-deployment]]
-===== Error handling in a war deployment
+===== Error Handling in a WAR Deployment
 When deployed to a servlet container, Spring Boot uses its error page filter to forward a request with an error status to the appropriate error page.
 This is necessary as the servlet specification does not provide an API for registering error pages.
 Depending on the container that you are deploying your war file to and the technologies that your application uses, some additional configuration may be required.
@@ -467,7 +475,7 @@ By default, the embedded server listens for HTTP requests on port `8080`.
 
 
 [[web.servlet.embedded-container.servlets-filters-listeners]]
-==== Servlets, Filters, and listeners
+==== Servlets, Filters, and Listeners
 When using an embedded servlet container, you can register servlets, filters, and all the listeners (such as `HttpSessionListener`) from the servlet spec, either by using Spring beans or by scanning for servlet components.
 
 

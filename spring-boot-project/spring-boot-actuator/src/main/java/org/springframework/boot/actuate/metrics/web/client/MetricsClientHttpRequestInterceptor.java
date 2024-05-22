@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.util.UriTemplateHandler;
 
 /**
- * {@link ClientHttpRequestInterceptor} applied via a
+ * {@link ClientHttpRequestInterceptor} applied through a
  * {@link MetricsRestTemplateCustomizer} to record metrics.
  *
  * @author Jon Schneider
@@ -88,8 +88,8 @@ class MetricsClientHttpRequestInterceptor implements ClientHttpRequestIntercepto
 		}
 		finally {
 			try {
-				getTimeBuilder(request, response).register(this.meterRegistry).record(System.nanoTime() - startTime,
-						TimeUnit.NANOSECONDS);
+				getTimeBuilder(request, response).register(this.meterRegistry)
+					.record(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
 			}
 			catch (Exception ex) {
 				logger.info("Failed to record metrics.", ex);
@@ -113,8 +113,8 @@ class MetricsClientHttpRequestInterceptor implements ClientHttpRequestIntercepto
 
 	private Timer.Builder getTimeBuilder(HttpRequest request, ClientHttpResponse response) {
 		return this.autoTimer.builder(this.metricName)
-				.tags(this.tagProvider.getTags(urlTemplate.get().poll(), request, response))
-				.description("Timer of RestTemplate operation");
+			.tags(this.tagProvider.getTags(urlTemplate.get().poll(), request, response))
+			.description("Timer of RestTemplate operation");
 	}
 
 	private final class CapturingUriTemplateHandler implements UriTemplateHandler {

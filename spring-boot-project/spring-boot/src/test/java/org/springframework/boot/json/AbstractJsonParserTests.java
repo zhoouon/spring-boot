@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,14 @@
 
 package org.springframework.boot.json;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+
+import org.springframework.util.StreamUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -98,7 +102,7 @@ abstract class AbstractJsonParserTests {
 	@Test
 	void mapOfLists() {
 		Map<String, Object> map = this.parser
-				.parseMap("{\"foo\":[{\"foo\":\"bar\",\"spam\":1},{\"foo\":\"baz\",\"spam\":2}]}");
+			.parseMap("{\"foo\":[{\"foo\":\"bar\",\"spam\":1},{\"foo\":\"baz\",\"spam\":2}]}");
 		assertThat(map).hasSize(1);
 		assertThat(((List<Object>) map.get("foo"))).hasSize(2);
 		assertThat(map.get("foo")).asList().allMatch(Map.class::isInstance);
@@ -107,8 +111,8 @@ abstract class AbstractJsonParserTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	void nestedLeadingAndTrailingWhitespace() {
-		Map<String, Object> map = this.parser.parseMap(
-				" {\"foo\": [ { \"foo\" : \"bar\" , \"spam\" : 1 } , { \"foo\" : \"baz\" , \"spam\" : 2 } ] } ");
+		Map<String, Object> map = this.parser
+			.parseMap(" {\"foo\": [ { \"foo\" : \"bar\" , \"spam\" : 1 } , { \"foo\" : \"baz\" , \"spam\" : 2 } ] } ");
 		assertThat(map).hasSize(1);
 		assertThat(((List<Object>) map.get("foo"))).hasSize(2);
 		assertThat(map.get("foo")).asList().allMatch(Map.class::isInstance);
@@ -178,12 +182,36 @@ abstract class AbstractJsonParserTests {
 	@Test
 	void listWithMalformedMap() {
 		assertThatExceptionOfType(JsonParseException.class)
-				.isThrownBy(() -> this.parser.parseList("[tru,erqett,{\"foo\":fatrue,true,true,true,tr''ue}]"));
+			.isThrownBy(() -> this.parser.parseList("[tru,erqett,{\"foo\":fatrue,true,true,true,tr''ue}]"));
 	}
 
 	@Test
 	void mapWithKeyAndNoValue() {
 		assertThatExceptionOfType(JsonParseException.class).isThrownBy(() -> this.parser.parseMap("{\"foo\"}"));
+	}
+
+	@Test // gh-31868
+	void listWithRepeatedOpenArray() throws IOException {
+		String input = StreamUtils.copyToString(
+				AbstractJsonParserTests.class.getResourceAsStream("repeated-open-array.txt"), StandardCharsets.UTF_8);
+		assertThatExceptionOfType(JsonParseException.class).isThrownBy(() -> this.parser.parseList(input))
+			.havingCause()
+			.withMessageContaining("too deeply nested");
+	}
+
+	@Test // gh-31869
+	void largeMalformed() throws IOException {
+		String input = StreamUtils.copyToString(
+				AbstractJsonParserTests.class.getResourceAsStream("large-malformed-json.txt"), StandardCharsets.UTF_8);
+		assertThatExceptionOfType(JsonParseException.class).isThrownBy(() -> this.parser.parseList(input));
+	}
+
+	@Test // gh-32029
+	void deeplyNestedMap() throws IOException {
+		String input = StreamUtils.copyToString(
+				AbstractJsonParserTests.class.getResourceAsStream("deeply-nested-map-json.txt"),
+				StandardCharsets.UTF_8);
+		assertThatExceptionOfType(JsonParseException.class).isThrownBy(() -> this.parser.parseList(input));
 	}
 
 }

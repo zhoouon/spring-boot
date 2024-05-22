@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,11 +28,30 @@ import org.springframework.context.annotation.Conditional;
  * {@link Conditional @Conditional} that only matches when the specified classes are on
  * the classpath.
  * <p>
- * A {@link #value()} can be safely specified on {@code @Configuration} classes as the
- * annotation metadata is parsed by using ASM before the class is loaded. Extra care is
- * required when placed on {@code @Bean} methods, consider isolating the condition in a
- * separate {@code Configuration} class, in particular if the return type of the method
- * matches the {@link #value target of the condition}.
+ * A {@code Class} {@link #value() value} can be safely specified on
+ * {@code @Configuration} classes as the annotation metadata is parsed by using ASM before
+ * the class is loaded. This only holds true if {@code @ConditionalOnClass} is used on a
+ * class. Extra care must be taken when using {@code @ConditionalOnClass} on {@code @Bean}
+ * methods: the {@link #value() value} attribute must not be used, instead the
+ * {@link #name() name} attribute can be used to reference the class which must be present
+ * as a {@code String}. Alternatively create a separate {@code @Configuration} class that
+ * isolates the condition. For example: <pre class="code">
+ * &#064;AutoConfiguration
+ * public class MyAutoConfiguration {
+ *
+ * 	&#64;Configuration(proxyBeanMethods = false)
+ * 	&#64;ConditionalOnClass(SomeService.class)
+ * 	public static class SomeServiceConfiguration {
+ *
+ * 		&#64;Bean
+ * 		&#64;ConditionalOnMissingBean
+ * 		public SomeService someService() {
+ * 			return new SomeService();
+ * 		}
+ *
+ * 	}
+ *
+ * }</pre>
  *
  * @author Phillip Webb
  * @since 1.0.0
@@ -44,17 +63,21 @@ import org.springframework.context.annotation.Conditional;
 public @interface ConditionalOnClass {
 
 	/**
-	 * The classes that must be present. Since this annotation is parsed by loading class
-	 * bytecode, it is safe to specify classes here that may ultimately not be on the
-	 * classpath, only if this annotation is directly on the affected component and
-	 * <b>not</b> if this annotation is used as a composed, meta-annotation. In order to
-	 * use this annotation as a meta-annotation, only use the {@link #name} attribute.
+	 * The classes that must be present. Using this attribute is safe when using
+	 * {@code ConditionalOnClass} at class level, but it must not be used when using
+	 * {@code ConditionalOnClass} on a {@code @Bean} method.
+	 * <p>
+	 * Since this annotation is parsed by loading class bytecode, it is safe to specify
+	 * classes here that may ultimately not be on the classpath, only if this annotation
+	 * is directly on the affected component and <b>not</b> if this annotation is used as
+	 * a composed, meta-annotation. In order to use this annotation as a meta-annotation,
+	 * only use the {@link #name} attribute.
 	 * @return the classes that must be present
 	 */
 	Class<?>[] value() default {};
 
 	/**
-	 * The classes names that must be present.
+	 * The class names that must be present.
 	 * @return the class names that must be present.
 	 */
 	String[] name() default {};

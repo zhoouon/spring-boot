@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -131,8 +131,12 @@ public abstract class JpaBaseConfiguration implements BeanFactoryAware {
 	public LocalContainerEntityManagerFactoryBean entityManagerFactory(EntityManagerFactoryBuilder factoryBuilder) {
 		Map<String, Object> vendorProperties = getVendorProperties();
 		customizeVendorProperties(vendorProperties);
-		return factoryBuilder.dataSource(this.dataSource).packages(getPackagesToScan()).properties(vendorProperties)
-				.mappingResources(getMappingResources()).jta(isJta()).build();
+		return factoryBuilder.dataSource(this.dataSource)
+			.packages(getPackagesToScan())
+			.properties(vendorProperties)
+			.mappingResources(getMappingResources())
+			.jta(isJta())
+			.build();
 	}
 
 	protected abstract AbstractJpaVendorAdapter createJpaVendorAdapter();
@@ -140,7 +144,7 @@ public abstract class JpaBaseConfiguration implements BeanFactoryAware {
 	protected abstract Map<String, Object> getVendorProperties();
 
 	/**
-	 * Customize vendor properties before they are used. Allows for post processing (for
+	 * Customize vendor properties before they are used. Allows for post-processing (for
 	 * example to configure JTA specific settings).
 	 * @param vendorProperties the vendor properties to customize
 	 */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ import org.springframework.util.ResourceUtils;
  *
  * @author Brian Clozel
  * @author Raheela Aslam
+ * @author Cyril Dangerville
  */
 class SslBuilderCustomizer implements UndertowBuilderCustomizer {
 
@@ -111,7 +112,7 @@ class SslBuilderCustomizer implements UndertowBuilderCustomizer {
 			KeyStore keyStore = getKeyStore(ssl, sslStoreProvider);
 			SslConfigurationValidator.validateKeyAlias(keyStore, ssl.getKeyAlias());
 			KeyManagerFactory keyManagerFactory = KeyManagerFactory
-					.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+				.getInstance(KeyManagerFactory.getDefaultAlgorithm());
 			String keyPassword = (sslStoreProvider != null) ? sslStoreProvider.getKeyPassword() : null;
 			if (keyPassword == null) {
 				keyPassword = (ssl.getKeyPassword() != null) ? ssl.getKeyPassword() : ssl.getKeyStorePassword();
@@ -149,7 +150,7 @@ class SslBuilderCustomizer implements UndertowBuilderCustomizer {
 		try {
 			KeyStore store = getTrustStore(ssl, sslStoreProvider);
 			TrustManagerFactory trustManagerFactory = TrustManagerFactory
-					.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+				.getInstance(TrustManagerFactory.getDefaultAlgorithm());
 			trustManagerFactory.init(store);
 			return trustManagerFactory.getTrustManagers();
 		}
@@ -180,16 +181,26 @@ class SslBuilderCustomizer implements UndertowBuilderCustomizer {
 	private KeyStore loadStore(String type, String provider, String resource, String password) throws Exception {
 		type = (type != null) ? type : "JKS";
 		KeyStore store = (provider != null) ? KeyStore.getInstance(type, provider) : KeyStore.getInstance(type);
-		try {
-			URL url = ResourceUtils.getURL(resource);
-			try (InputStream stream = url.openStream()) {
-				store.load(stream, (password != null) ? password.toCharArray() : null);
+		if (type.equalsIgnoreCase("PKCS11")) {
+			if (resource != null && !resource.isEmpty()) {
+				throw new IllegalArgumentException("Input keystore location is not valid for keystore type 'PKCS11': '"
+						+ resource + "'. Must be undefined / null.");
 			}
-			return store;
+			store.load(null, (password != null) ? password.toCharArray() : null);
 		}
-		catch (Exception ex) {
-			throw new WebServerException("Could not load key store '" + resource + "'", ex);
+		else {
+			try {
+				URL url = ResourceUtils.getURL(resource);
+				try (InputStream stream = url.openStream()) {
+					store.load(stream, (password != null) ? password.toCharArray() : null);
+				}
+			}
+			catch (Exception ex) {
+				throw new WebServerException("Could not load key store '" + resource + "'", ex);
+			}
 		}
+
+		return store;
 	}
 
 	/**

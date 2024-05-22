@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,8 @@ import org.apache.maven.shared.invoker.InvocationRequest;
 import org.apache.maven.shared.invoker.InvocationResult;
 import org.apache.maven.shared.invoker.Invoker;
 import org.apache.maven.shared.invoker.MavenInvocationException;
+
+import org.springframework.util.FileSystemUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.contentOf;
@@ -157,10 +159,8 @@ class MavenBuild {
 			});
 			String settingsXml = new String(Files.readAllBytes(Paths.get("src", "intTest", "projects", "settings.xml")),
 					StandardCharsets.UTF_8)
-							.replace("@localCentralUrl@",
-									new File("build/int-test-maven-repository").toURI().toURL().toString())
-							.replace("@localRepositoryPath@",
-									new File("build/local-maven-repository").getAbsolutePath());
+				.replace("@localCentralUrl@", new File("build/int-test-maven-repository").toURI().toURL().toString())
+				.replace("@localRepositoryPath@", new File("build/local-maven-repository").getAbsolutePath());
 			Files.write(destination.resolve("settings.xml"), settingsXml.getBytes(StandardCharsets.UTF_8),
 					StandardOpenOption.CREATE_NEW);
 			request.setBaseDirectory(this.temp);
@@ -194,6 +194,9 @@ class MavenBuild {
 		}
 		catch (Exception ex) {
 			throw new RuntimeException(ex);
+		}
+		finally {
+			FileSystemUtils.deleteRecursively(this.temp);
 		}
 	}
 

@@ -12,16 +12,6 @@ configurations {
 	documentation
 }
 
-repositories {
-	maven {
-		url "https://repo.spring.io/release"
-		mavenContent {
-			includeGroup "io.spring.asciidoctor"
-			includeGroup "io.spring.asciidoctor.backends"
-		}
-	}
-}
-
 dependencies {
 	compileOnly("org.apache.maven.plugin-tools:maven-plugin-annotations")
 	compileOnly("org.sonatype.plexus:plexus-build-api")
@@ -143,7 +133,7 @@ task xsdResources(type: Sync) {
 }
 
 prepareMavenBinaries {
-	versions "3.8.5", "3.6.3", "3.5.4"
+	versions "3.9.0", "3.8.5", "3.6.3", "3.5.4"
 }
 
 artifacts {

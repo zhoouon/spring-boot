@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ import org.springframework.boot.loader.archive.JarFileArchive;
 import org.springframework.boot.loader.util.SystemPropertyUtils;
 
 /**
- * {@link Launcher} for archives with user-configured classpath and main class via a
+ * {@link Launcher} for archives with user-configured classpath and main class through a
  * properties file. This model is often more flexible and more amenable to creating
  * well-behaved OS-level services than a model based on executable jars.
  * <p>
@@ -127,7 +127,7 @@ public class PropertiesLauncher extends Launcher {
 	public static final String CONFIG_LOCATION = "loader.config.location";
 
 	/**
-	 * Properties key for boolean flag (default false) which if set will cause the
+	 * Properties key for boolean flag (default false) which, if set, will cause the
 	 * external configuration properties to be copied to System properties (assuming that
 	 * is allowed by Java security).
 	 */

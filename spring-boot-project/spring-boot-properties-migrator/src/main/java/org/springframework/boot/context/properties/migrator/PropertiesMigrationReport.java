@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,12 +23,11 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.springframework.boot.configurationmetadata.ConfigurationMetadataProperty;
-
 /**
  * Provides a properties migration report.
  *
  * @author Stephane Nicoll
+ * @author Moritz Halbritter
  */
 class PropertiesMigrationReport {
 
@@ -46,7 +45,7 @@ class PropertiesMigrationReport {
 		}
 		StringBuilder report = new StringBuilder();
 		report.append(String
-				.format("%nThe use of configuration keys that have been renamed was found in the environment:%n%n"));
+			.format("%nThe use of configuration keys that have been renamed was found in the environment:%n%n"));
 		append(report, content);
 		report.append(String.format("%n"));
 		report.append("Each configuration key has been temporarily mapped to its "
@@ -67,8 +66,8 @@ class PropertiesMigrationReport {
 			return null;
 		}
 		StringBuilder report = new StringBuilder();
-		report.append(String.format(
-				"%nThe use of configuration keys that are no longer supported was found in the environment:%n%n"));
+		report.append(String
+			.format("%nThe use of configuration keys that are no longer supported was found in the environment:%n%n"));
 		append(report, content);
 		report.append(String.format("%n"));
 		report.append("Please refer to the release notes or reference guide for potential alternatives.");
@@ -78,8 +77,11 @@ class PropertiesMigrationReport {
 
 	private Map<String, List<PropertyMigration>> getContent(
 			Function<LegacyProperties, List<PropertyMigration>> extractor) {
-		return this.content.entrySet().stream().filter((entry) -> !extractor.apply(entry.getValue()).isEmpty()).collect(
-				Collectors.toMap(Map.Entry::getKey, (entry) -> new ArrayList<>(extractor.apply(entry.getValue()))));
+		return this.content.entrySet()
+			.stream()
+			.filter((entry) -> !extractor.apply(entry.getValue()).isEmpty())
+			.collect(
+					Collectors.toMap(Map.Entry::getKey, (entry) -> new ArrayList<>(extractor.apply(entry.getValue()))));
 	}
 
 	private void append(StringBuilder report, Map<String, List<PropertyMigration>> content) {
@@ -87,8 +89,7 @@ class PropertiesMigrationReport {
 			report.append(String.format("Property source '%s':%n", name));
 			properties.sort(PropertyMigration.COMPARATOR);
 			properties.forEach((property) -> {
-				ConfigurationMetadataProperty metadata = property.getMetadata();
-				report.append(String.format("\tKey: %s%n", metadata.getId()));
+				report.append(String.format("\tKey: %s%n", property.getProperty().getName()));
 				if (property.getLineNumber() != null) {
 					report.append(String.format("\t\tLine: %d%n", property.getLineNumber()));
 				}
@@ -120,8 +121,9 @@ class PropertiesMigrationReport {
 		}
 
 		List<PropertyMigration> getUnsupported() {
-			return this.properties.stream().filter((property) -> !property.isCompatibleType())
-					.collect(Collectors.toList());
+			return this.properties.stream()
+				.filter((property) -> !property.isCompatibleType())
+				.collect(Collectors.toList());
 		}
 
 	}

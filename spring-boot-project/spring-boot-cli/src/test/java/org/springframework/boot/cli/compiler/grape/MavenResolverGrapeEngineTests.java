@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ class MavenResolverGrapeEngineTests {
 	private GrapeEngine createGrapeEngine(RepositoryConfiguration... additionalRepositories) {
 		List<RepositoryConfiguration> repositoryConfigurations = new ArrayList<>();
 		repositoryConfigurations
-				.add(new RepositoryConfiguration("central", URI.create("https://repo1.maven.org/maven2"), false));
+			.add(new RepositoryConfiguration("central", URI.create("https://repo.maven.apache.org/maven2"), false));
 		repositoryConfigurations.addAll(Arrays.asList(additionalRepositories));
 		DependencyResolutionContext dependencyResolutionContext = new DependencyResolutionContext();
 		dependencyResolutionContext.addDependencyManagement(new SpringBootDependenciesDependencyManagement());
@@ -78,7 +78,7 @@ class MavenResolverGrapeEngineTests {
 		doWithCustomUserHome(() -> {
 			GrapeEngine grapeEngine = createGrapeEngine();
 			DefaultRepositorySystemSession session = (DefaultRepositorySystemSession) ReflectionTestUtils
-					.getField(grapeEngine, "session");
+				.getField(grapeEngine, "session");
 
 			assertThat(session.getProxySelector() instanceof CompositeProxySelector).isTrue();
 		});
@@ -141,10 +141,8 @@ class MavenResolverGrapeEngineTests {
 	void resolutionWithCustomResolver() {
 		Map<String, Object> args = new HashMap<>();
 		GrapeEngine grapeEngine = createGrapeEngine();
-		grapeEngine.addResolver(createResolver("spring-releases", "https://repo.spring.io/release"));
-		Map<String, Object> dependency = createDependency("io.spring.docresources", "spring-doc-resources",
-				"0.1.1.RELEASE");
-		dependency.put("ext", "zip");
+		grapeEngine.addResolver(createResolver("spring-milestones", "https://repo.spring.io/milestone"));
+		Map<String, Object> dependency = createDependency("org.springframework", "spring-jcl", "5.3.0-M1");
 		grapeEngine.grab(args, dependency);
 		assertThat(this.groovyClassLoader.getURLs()).hasSize(1);
 	}

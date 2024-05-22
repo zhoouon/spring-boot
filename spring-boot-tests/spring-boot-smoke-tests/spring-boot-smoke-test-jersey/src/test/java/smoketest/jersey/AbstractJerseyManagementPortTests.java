@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package smoketest.jersey;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 
-import org.glassfish.jersey.server.ResourceConfig;
 import org.junit.jupiter.api.Test;
 import smoketest.jersey.AbstractJerseyManagementPortTests.ResourceConfigConfiguration;
 
@@ -67,21 +66,21 @@ class AbstractJerseyManagementPortTests {
 	@Test
 	void resourceShouldNotBeAvailableOnManagementPort() {
 		ResponseEntity<String> entity = this.testRestTemplate
-				.getForEntity("http://localhost:" + this.managementPort + "/test", String.class);
+			.getForEntity("http://localhost:" + this.managementPort + "/test", String.class);
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 	}
 
 	@Test
 	void actuatorShouldBeAvailableOnManagementPort() {
 		ResponseEntity<String> entity = this.testRestTemplate
-				.getForEntity("http://localhost:" + this.managementPort + "/actuator/health", String.class);
+			.getForEntity("http://localhost:" + this.managementPort + "/actuator/health", String.class);
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
 	}
 
 	@Test
 	void actuatorShouldNotBeAvailableOnMainPort() {
 		ResponseEntity<String> entity = this.testRestTemplate
-				.getForEntity("http://localhost:" + this.port + "/actuator/health", String.class);
+			.getForEntity("http://localhost:" + this.port + "/actuator/health", String.class);
 		assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 	}
 
@@ -90,12 +89,7 @@ class AbstractJerseyManagementPortTests {
 
 		@Bean
 		ResourceConfigCustomizer customizer() {
-			return new ResourceConfigCustomizer() {
-				@Override
-				public void customize(ResourceConfig config) {
-					config.register(TestEndpoint.class);
-				}
-			};
+			return (config) -> config.register(TestEndpoint.class);
 		}
 
 		@Path("/test")

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,9 +56,10 @@ import org.springframework.web.util.UriTemplateHandler;
 
 /**
  * Convenient alternative of {@link RestTemplate} that is suitable for integration tests.
- * {@code TestRestTemplate} is fault tolerant. This means that 4xx and 5xx do not result
- * in an exception being thrown and can instead be detected via the {@link ResponseEntity
- * response entity} and its {@link ResponseEntity#getStatusCode() status code}.
+ * {@code TestRestTemplate} is fault-tolerant. This means that 4xx and 5xx do not result
+ * in an exception being thrown and can instead be detected through the
+ * {@link ResponseEntity response entity} and its {@link ResponseEntity#getStatusCode()
+ * status code}.
  * <p>
  * A {@code TestRestTemplate} can optionally carry Basic authentication headers. If Apache
  * Http Client 4.3.2 or better is available (recommended) it will be used as the client,
@@ -134,7 +135,7 @@ public class TestRestTemplate {
 			ClientHttpRequestFactory requestFactory = builder.buildRequestFactory();
 			if (requestFactory instanceof HttpComponentsClientHttpRequestFactory) {
 				builder = builder
-						.requestFactory(() -> new CustomHttpComponentsClientHttpRequestFactory(httpClientOptions));
+					.requestFactory(() -> new CustomHttpComponentsClientHttpRequestFactory(httpClientOptions));
 			}
 		}
 		if (username != null || password != null) {
@@ -641,12 +642,12 @@ public class TestRestTemplate {
 	}
 
 	/**
-	 * Return the value of the Allow header for the given URI.
+	 * Return the value of the {@code Allow} header for the given URI.
 	 * <p>
 	 * URI Template variables are expanded using the given URI variables, if any.
 	 * @param url the URL
 	 * @param urlVariables the variables to expand in the template
-	 * @return the value of the allow header
+	 * @return the value of the {@code Allow} header
 	 * @see RestTemplate#optionsForAllow(java.lang.String, java.lang.Object[])
 	 */
 	public Set<HttpMethod> optionsForAllow(String url, Object... urlVariables) {
@@ -654,12 +655,12 @@ public class TestRestTemplate {
 	}
 
 	/**
-	 * Return the value of the Allow header for the given URI.
+	 * Return the value of the {@code Allow} header for the given URI.
 	 * <p>
 	 * URI Template variables are expanded using the given map.
 	 * @param url the URL
 	 * @param urlVariables the variables to expand in the template
-	 * @return the value of the allow header
+	 * @return the value of the {@code Allow} header
 	 * @see RestTemplate#optionsForAllow(java.lang.String, java.util.Map)
 	 */
 	public Set<HttpMethod> optionsForAllow(String url, Map<String, ?> urlVariables) {
@@ -667,9 +668,9 @@ public class TestRestTemplate {
 	}
 
 	/**
-	 * Return the value of the Allow header for the given URL.
+	 * Return the value of the {@code Allow} header for the given URL.
 	 * @param url the URL
-	 * @return the value of the allow header
+	 * @return the value of the {@code Allow} header
 	 * @see RestTemplate#optionsForAllow(java.net.URI)
 	 */
 	public Set<HttpMethod> optionsForAllow(URI url) {
@@ -951,12 +952,12 @@ public class TestRestTemplate {
 		if (entity instanceof UriTemplateRequestEntity) {
 			UriTemplateRequestEntity<?> templatedUriEntity = (UriTemplateRequestEntity<?>) entity;
 			if (templatedUriEntity.getVars() != null) {
-				return this.restTemplate.getUriTemplateHandler().expand(templatedUriEntity.getUriTemplate(),
-						templatedUriEntity.getVars());
+				return this.restTemplate.getUriTemplateHandler()
+					.expand(templatedUriEntity.getUriTemplate(), templatedUriEntity.getVars());
 			}
 			else if (templatedUriEntity.getVarsMap() != null) {
-				return this.restTemplate.getUriTemplateHandler().expand(templatedUriEntity.getUriTemplate(),
-						templatedUriEntity.getVarsMap());
+				return this.restTemplate.getUriTemplateHandler()
+					.expand(templatedUriEntity.getUriTemplate(), templatedUriEntity.getVarsMap());
 			}
 			throw new IllegalStateException(
 					"No variables specified for URI template: " + templatedUriEntity.getUriTemplate());
@@ -1024,8 +1025,10 @@ public class TestRestTemplate {
 		}
 
 		protected RequestConfig getRequestConfig() {
-			Builder builder = RequestConfig.custom().setCookieSpec(this.cookieSpec).setAuthenticationEnabled(false)
-					.setRedirectsEnabled(this.enableRedirects);
+			Builder builder = RequestConfig.custom()
+				.setCookieSpec(this.cookieSpec)
+				.setAuthenticationEnabled(false)
+				.setRedirectsEnabled(this.enableRedirects);
 			return builder.build();
 		}
 

@@ -27,6 +27,13 @@ bom {
 			]
 		}
 	}
+	library("C3P0", "0.9.5.5") {
+		group("com.mchange") {
+			modules = [
+					"c3p0"
+			]
+		}
+	}
 	library("Commons Compress", "1.21") {
 		group("org.apache.commons") {
 			modules = [
@@ -49,7 +56,8 @@ bom {
 		}
 	}
 	library("JLine", "2.11") {
-		prohibit("[2.12,)") {
+		prohibit {
+			versionRange "[2.12,)"
 			because "it contains breaking changes"
 		}
 		group("jline") {
@@ -157,6 +165,13 @@ bom {
 			]
 		}
 	}
+	library("SnakeYAML", "1.32") {
+		group("org.yaml") {
+			modules = [
+				"snakeyaml"
+			]
+		}
+	}
 	library("Spock Framework", "2.0-groovy-3.0") {
 		group("org.spockframework") {
 			modules = [
@@ -172,7 +187,7 @@ bom {
 			]
 		}
 	}
-	library("Spring Asciidoctor Extensions", "0.6.0") {
+	library("Spring Asciidoctor Extensions", "0.6.1") {
 		group("io.spring.asciidoctor") {
 			modules = [
 				"spring-asciidoctor-extensions-spring-boot",
@@ -180,7 +195,7 @@ bom {
 			]
 		}
 	}
-	library("Testcontainers", "1.16.2") {
+	library("Testcontainers", "1.17.3") {
 		group("org.testcontainers") {
 			imports = [
 				"testcontainers-bom"
@@ -191,4 +206,9 @@ bom {
 
 dependencies {
 	api(enforcedPlatform(project(":spring-boot-project:spring-boot-dependencies")))
+}
+
+tasks.withType(GenerateModuleMetadata).configureEach {
+	// Internal module so enforced platform dependencies are OK
+	suppressedValidationErrors.add('enforced-platform')
 }

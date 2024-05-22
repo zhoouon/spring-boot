@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,30 +34,23 @@ public final class GradleVersions {
 
 	public static List<String> allCompatible() {
 		if (isJava18()) {
-			return Arrays.asList("7.3.3", "7.4.2", "7.5");
+			return Arrays.asList("7.3.3", GradleVersion.current().getVersion(), "8.0.2");
 		}
 		if (isJava17()) {
-			return Arrays.asList("7.2", "7.3.3", "7.4.2", "7.5");
+			return Arrays.asList("7.2", GradleVersion.current().getVersion(), "8.0.2");
 		}
 		if (isJava16()) {
-			return Arrays.asList("7.0.2", "7.1", "7.2", "7.3.3", "7.4.2", "7.5");
+			return Arrays.asList("7.0.2", GradleVersion.current().getVersion(), "8.0.2");
 		}
-		return Arrays.asList("6.8.3", GradleVersion.current().getVersion(), "7.0.2", "7.1.1", "7.2", "7.3.3", "7.4.2",
-				"7.5");
+		return Arrays.asList("6.8.3", "6.9.4", "7.0.2", GradleVersion.current().getVersion(), "8.0.2");
 	}
 
-	public static String currentOrMinimumCompatible() {
-		if (isJava17()) {
-			return "7.3.3";
-		}
-		if (isJava16()) {
-			return "7.0.2";
-		}
-		return GradleVersion.current().getVersion();
+	public static String minimumCompatible() {
+		return allCompatible().get(0);
 	}
 
 	private static boolean isJava18() {
-		return JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_HIGHER);
+		return JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_18);
 	}
 
 	private static boolean isJava17() {

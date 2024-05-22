@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,13 +86,13 @@ public class KafkaAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean(ProducerListener.class)
-	public ProducerListener<Object, Object> kafkaProducerListener() {
+	public LoggingProducerListener<Object, Object> kafkaProducerListener() {
 		return new LoggingProducerListener<>();
 	}
 
 	@Bean
 	@ConditionalOnMissingBean(ConsumerFactory.class)
-	public ConsumerFactory<?, ?> kafkaConsumerFactory(
+	public DefaultKafkaConsumerFactory<?, ?> kafkaConsumerFactory(
 			ObjectProvider<DefaultKafkaConsumerFactoryCustomizer> customizers) {
 		DefaultKafkaConsumerFactory<Object, Object> factory = new DefaultKafkaConsumerFactory<>(
 				this.properties.buildConsumerProperties());
@@ -102,7 +102,7 @@ public class KafkaAutoConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean(ProducerFactory.class)
-	public ProducerFactory<?, ?> kafkaProducerFactory(
+	public DefaultKafkaProducerFactory<?, ?> kafkaProducerFactory(
 			ObjectProvider<DefaultKafkaProducerFactoryCustomizer> customizers) {
 		DefaultKafkaProducerFactory<?, ?> factory = new DefaultKafkaProducerFactory<>(
 				this.properties.buildProducerProperties());
@@ -151,8 +151,10 @@ public class KafkaAutoConfiguration {
 	public RetryTopicConfiguration kafkaRetryTopicConfiguration(KafkaTemplate<?, ?> kafkaTemplate) {
 		KafkaProperties.Retry.Topic retryTopic = this.properties.getRetry().getTopic();
 		RetryTopicConfigurationBuilder builder = RetryTopicConfigurationBuilder.newInstance()
-				.maxAttempts(retryTopic.getAttempts()).useSingleTopicForFixedDelays().suffixTopicsWithIndexValues()
-				.doNotAutoCreateRetryTopics();
+			.maxAttempts(retryTopic.getAttempts())
+			.useSingleTopicForFixedDelays()
+			.suffixTopicsWithIndexValues()
+			.doNotAutoCreateRetryTopics();
 		setBackOffPolicy(builder, retryTopic);
 		return builder.create(kafkaTemplate);
 	}

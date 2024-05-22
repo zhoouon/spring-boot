@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,7 +76,7 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 	@Override
 	public void starting(ConfigurableBootstrapContext bootstrapContext) {
 		this.initialMulticaster
-				.multicastEvent(new ApplicationStartingEvent(bootstrapContext, this.application, this.args));
+			.multicastEvent(new ApplicationStartingEvent(bootstrapContext, this.application, this.args));
 	}
 
 	@Override
@@ -89,7 +89,7 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 	@Override
 	public void contextPrepared(ConfigurableApplicationContext context) {
 		this.initialMulticaster
-				.multicastEvent(new ApplicationContextInitializedEvent(this.application, this.args, context));
+			.multicastEvent(new ApplicationContextInitializedEvent(this.application, this.args, context));
 	}
 
 	@Override
@@ -125,10 +125,10 @@ public class EventPublishingRunListener implements SpringApplicationRunListener,
 		}
 		else {
 			// An inactive context may not have a multicaster so we use our multicaster to
-			// call all of the context's listeners instead
+			// call all the context's listeners instead
 			if (context instanceof AbstractApplicationContext) {
 				for (ApplicationListener<?> listener : ((AbstractApplicationContext) context)
-						.getApplicationListeners()) {
+					.getApplicationListeners()) {
 					this.initialMulticaster.addApplicationListener(listener);
 				}
 			}

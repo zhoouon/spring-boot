@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 the original author or authors.
+ * Copyright 2012-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,6 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFile;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.plugins.BasePlugin;
-import org.gradle.api.plugins.Convention;
 import org.gradle.api.plugins.JavaApplication;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
@@ -44,6 +43,7 @@ import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.work.DisableCachingByDefault;
 
 import org.springframework.boot.gradle.dsl.SpringBootExtension;
 import org.springframework.boot.loader.tools.MainClassFinder;
@@ -54,6 +54,7 @@ import org.springframework.boot.loader.tools.MainClassFinder;
  * @author Andy Wilkinson
  * @since 2.4
  */
+@DisableCachingByDefault(because = "Not worth caching")
 public class ResolveMainClassName extends DefaultTask {
 
 	private static final String SPRING_BOOT_APPLICATION_CLASS_NAME = "org.springframework.boot.autoconfigure.SpringBootApplication";
@@ -135,8 +136,13 @@ public class ResolveMainClassName extends DefaultTask {
 		if (configuredMainClass != null) {
 			return configuredMainClass;
 		}
-		return getClasspath().filter(File::isDirectory).getFiles().stream().map(this::findMainClass)
-				.filter(Objects::nonNull).findFirst().orElse("");
+		return getClasspath().filter(File::isDirectory)
+			.getFiles()
+			.stream()
+			.map(this::findMainClass)
+			.filter(Objects::nonNull)
+			.findFirst()
+			.orElse("");
 	}
 
 	private String findMainClass(File file) {
@@ -155,29 +161,28 @@ public class ResolveMainClassName extends DefaultTask {
 	static TaskProvider<ResolveMainClassName> registerForTask(String taskName, Project project,
 			Callable<FileCollection> classpath) {
 		TaskProvider<ResolveMainClassName> resolveMainClassNameProvider = project.getTasks()
-				.register(taskName + "MainClassName", ResolveMainClassName.class, (resolveMainClassName) -> {
-					Convention convention = project.getConvention();
-					resolveMainClassName.setDescription(
-							"Resolves the name of the application's main class for the " + taskName + " task.");
-					resolveMainClassName.setGroup(BasePlugin.BUILD_GROUP);
-					resolveMainClassName.setClasspath(classpath);
-					resolveMainClassName.getConfiguredMainClassName().convention(project.provider(() -> {
-						String javaApplicationMainClass = getJavaApplicationMainClass(convention);
-						if (javaApplicationMainClass != null) {
-							return javaApplicationMainClass;
-						}
-						SpringBootExtension springBootExtension = project.getExtensions()
-								.findByType(SpringBootExtension.class);
-						return springBootExtension.getMainClass().getOrNull();
-					}));
-					resolveMainClassName.getOutputFile()
-							.set(project.getLayout().getBuildDirectory().file(taskName + "MainClassName"));
-				});
+			.register(taskName + "MainClassName", ResolveMainClassName.class, (resolveMainClassName) -> {
+				resolveMainClassName
+					.setDescription("Resolves the name of the application's main class for the " + taskName + " task.");
+				resolveMainClassName.setGroup(BasePlugin.BUILD_GROUP);
+				resolveMainClassName.setClasspath(classpath);
+				resolveMainClassName.getConfiguredMainClassName().convention(project.provider(() -> {
+					String javaApplicationMainClass = getJavaApplicationMainClass(project);
+					if (javaApplicationMainClass != null) {
+						return javaApplicationMainClass;
+					}
+					SpringBootExtension springBootExtension = project.getExtensions()
+						.findByType(SpringBootExtension.class);
+					return springBootExtension.getMainClass().getOrNull();
+				}));
+				resolveMainClassName.getOutputFile()
+					.set(project.getLayout().getBuildDirectory().file(taskName + "MainClassName"));
+			});
 		return resolveMainClassNameProvider;
 	}
 
-	private static String getJavaApplicationMainClass(Convention convention) {
-		JavaApplication javaApplication = convention.findByType(JavaApplication.class);
+	private static String getJavaApplicationMainClass(Project project) {
+		JavaApplication javaApplication = project.getExtensions().findByType(JavaApplication.class);
 		if (javaApplication == null) {
 			return null;
 		}
